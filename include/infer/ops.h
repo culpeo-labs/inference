@@ -2,29 +2,25 @@
 
 #include <cstddef>
 #include <stdint.h>
-#include <mdspan>
+
+#include <infer/types.h>
 
 namespace culpeo::inference {
 
-    template<typename T>
-    using matrix_t = std::mdspan<T, std::dextents<std::size_t, 2>>;
 
-    template<typename T>
-    using vector_t = std::span<T>;
+    void embed(types::vec_t<float> out, types::cmat_t<float> table, std::ptrdiff_t token_id);
 
-    void embed(vector_t<float> out, matrix_t<const float> table, std::ptrdiff_t token_id);
+    void rmsnorm(types::vec_t<float> out, types::cvec_t<float> x, types::cvec_t<float> weight, float eps);
 
-    void rmsnorm(vector_t<float> out, vector_t<const float> x, vector_t<const float> weight, float eps);
+    void matvec(types::vec_t<float> out, types::cmat_t<float> W, types::cvec_t<float> x);
 
-    void matvec(vector_t<float> out, matrix_t<const float> W, vector_t<const float> x);
+    void rope(types::mat_t<float> t, std::ptrdiff_t pos, float theta_base);
 
-    void rope(matrix_t<float> t, std::ptrdiff_t pos, float theta_base);
+    void softmax(types::vec_t<float> x);
 
-    void softmax(vector_t<float> x);
+    void add(types::vec_t<float> out, types::cvec_t<float> a, types::cvec_t<float> b);
 
-    void add(vector_t<float> out, vector_t<const float> a, vector_t<const float> b);
+    void silu_mul(types::vec_t<float> out, types::cvec_t<float> gate, types::cvec_t<float> up);
 
-    void silu_mul(vector_t<float> out, vector_t<const float> gate, vector_t<const float> up);
-
-    std::ptrdiff_t argmax(vector_t<const float> x);
+    std::ptrdiff_t argmax(types::cvec_t<float> x);
 }
