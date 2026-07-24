@@ -94,7 +94,7 @@ namespace culpeo::inference::util {
                 }
                 else if (exponent == 0x1F)
                 {
-                    bits = (sign << 31) | 0x7F800000u << 0 | (mantissa << 13);
+                    bits = (sign << 31) | 0x7F800000u | (mantissa << 13);
                 }
                 else
                 {
