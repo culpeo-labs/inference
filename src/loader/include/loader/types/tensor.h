@@ -18,7 +18,7 @@ namespace culpeo::loader::types {
         BOOL,
     };
 
-    struct tensor
+    struct tensor_descriptor
     {
         data_type dtype;
         std::vector<long> shape;

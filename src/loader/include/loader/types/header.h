@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <map>
 #include <string>
 
@@ -9,8 +10,8 @@ namespace culpeo::loader::types {
 
     struct header
     {
-        std::map<std::string, std::string> metadata;
-        std::map<std::string, tensor> tensors;
+        std::map<std::string, std::string, std::less<>> metadata;
+        std::map<std::string, tensor_descriptor, std::less<>> tensors;
     };
 
 }

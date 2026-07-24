@@ -15,12 +15,11 @@ int main(int, char **)
 {
     constexpr std::string_view path{ "/workspaces/inference/model.safetensors"};
     const auto t = culpeo::loader::safe_tensors::load({ path });
-              // std::ifstream file(path, std::ios::binary);
-    // const auto json_size = read_u64_le(file);
-    // std::cout << "json_size: " << json_size << std::endl;
-    // std::vector<char> data( json_size + 1, '\0');
-    // file.read(data.data(), json_size);
-    // std::cout << data.data() << "\n";
+    std::cout << "Count: " << t.tensor_count() << std::endl;
+    for (auto & name : t.keys())
+    {
+        std::cout << name << "\n";
+    }
     return 0;
 
 

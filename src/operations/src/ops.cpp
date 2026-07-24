@@ -32,8 +32,10 @@ void culpeo::inference::matvec(t::vec_t<float> out, t::cmat_t<float> W, t::cvec_
   assert(W.stride(0) == W.extent(1));
   for (std::size_t r = 0; r < W.extent(0); r++)
   {
-    t::cvec_t<float> row{W.data_handle() + r * W.extent(1), W.extent(1)};
-    out[r] = std::ranges::fold_left(std::views::zip(row, x) | std::views::transform([](const auto & pair) { const auto [wi, xi] = pair; return wi * xi; }), 0.0f, std::plus<float>{});
+    for (std::size_t c = 0; c < W.extent(1); c++)
+    {
+      out[r] += W[r, c] * x[c];
+    }
   }
 }
 
