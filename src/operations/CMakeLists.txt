@@ -1,6 +1,7 @@
 
 add_library(operations src/ops.cpp)
 target_include_directories(operations PUBLIC include)
+target_link_libraries(operations PUBLIC util)
 target_compile_options(operations PRIVATE -Wall -Wextra)
 
 

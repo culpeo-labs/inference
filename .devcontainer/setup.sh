@@ -11,6 +11,7 @@ sudo apt-get install -y --no-install-recommends \
     ninja-build \
     pkg-config \
     llvm-21 \
+    libclang-rt-21-dev \
     g++-16
 
 sudo apt-get clean

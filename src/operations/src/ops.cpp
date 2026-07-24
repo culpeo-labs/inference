@@ -1,5 +1,5 @@
 #include "infer/ops.h"
-#include "infer/types.h"
+#include <util/types.h>
 
 #include <algorithm>
 #include <cassert>
@@ -7,7 +7,7 @@
 #include <ranges>
 #include <cmath>
 
-namespace t = culpeo::inference::types;
+namespace t = culpeo::inference::util;
 
 void culpeo::inference::embed(t::vec_t<float> out, t::cmat_t<float> table, std::ptrdiff_t token_id)
 {

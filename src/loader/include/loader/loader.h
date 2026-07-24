@@ -1,6 +1,6 @@
 #pragma once
 
-#include "infer/types.h"
+#include <util/types.h>
 #include "loader/types/header.h"
 #include <bit>
 #include <expected>
@@ -9,6 +9,7 @@
 #include <string_view>
 #include <vector>
 #include <numeric>
+#include <stdfloat>
 
 namespace culpeo::loader {
 
@@ -25,7 +26,7 @@ namespace culpeo::loader {
         tensor & operator=(const tensor &) = delete;
         // tensor & operator=(tensor &&) = default;
 
-        culpeo::inference::types::cmat_t<std::bfloat16_t> as_cmat() const;
+        // culpeo::inference::util::cmat_t<std::floatbfloat16_t> as_cmat() const;
     };
 
 

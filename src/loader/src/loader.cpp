@@ -1,6 +1,6 @@
 
 #include "loader/loader.h"
-#include "infer/types.h"
+#include <util/types.h>
 #include "loader/types/header.h"
 #include "loader/types/tensor.h"
 #include <cstddef>
@@ -115,10 +115,10 @@ tensor::tensor(std::shared_ptr<FILE> file, std::unique_ptr<void, std::function<v
 {
 }
 
-culpeo::inference::types::cmat_t<float, std::bfloat16_t> tensor::as_cmat() const
-{
-    assert(m_desc.dtype == types::data_type::BF16);
-    assert(m_desc.shape.size() == 2);
-    return culpeo::inference::types::cmat_t<float, bf16_accessor>{ static_cast<bf16_accessor::element_type *>(m_data.get()), m_desc.shape[0], m_desc.shape[1] };
-}
+// culpeo::inference::types::cmat_t<float, std::bfloat16_t> tensor::as_cmat() const
+// {
+//     assert(m_desc.dtype == types::data_type::BF16);
+//     assert(m_desc.shape.size() == 2);
+//     return culpeo::inference::types::cmat_t<float, bf16_accessor>{ static_cast<bf16_accessor::element_type *>(m_data.get()), m_desc.shape[0], m_desc.shape[1] };
+// }
 
