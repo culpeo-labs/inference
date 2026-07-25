@@ -1,4 +1,4 @@
-#include "loader/loader.h"
+#include "model/safetensors.h"
 #include <fstream>
 #include <iostream>
 #include <string_view>
@@ -14,9 +14,15 @@
 int main(int, char **)
 {
     constexpr std::string_view path{ "/workspaces/inference/model.safetensors"};
-    const auto t = culpeo::inference::loader::safe_tensors::load({ path });
-    std::cout << "Count: " << t.tensor_count() << std::endl;
-    for (auto & name : t.keys())
+    const auto t = culpeo::inference::model::safetensors::load({ path });
+    if (!t.has_value())
+    {
+        std::cerr << t.error() << "\n";
+        return 1;
+    }
+    const auto model_file = *t;
+    std::cout << "Count: " << model_file.tensor_count() << std::endl;
+    for (auto & name : model_file.keys())
     {
         std::cout << name << "\n";
     }
