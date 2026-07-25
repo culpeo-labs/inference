@@ -10,6 +10,10 @@
 
 namespace culpeo::inference::util {
 
+    template<typename T, bool C>
+        requires(!std::is_pointer_v<T>)
+    using conditionally_const_t = std::conditional_t<C, std::add_const_t<T>, T>;
+
     enum class data_type
     {
         BF16,
@@ -66,10 +70,11 @@ namespace culpeo::inference::util {
     template<>
     struct matrix<data_type::F16>
     {
+        template<bool C = false>
         struct accessor_policy
         {
-            using element_type = std::uint16_t;
-            using data_handle_type = std::uint16_t *;
+            using element_type = conditionally_const_t<std::uint16_t, C>;
+            using data_handle_type = std::add_pointer_t<element_type>;
             using reference = float;
             using offset_policy = accessor_policy;
 
@@ -109,17 +114,18 @@ namespace culpeo::inference::util {
                 return p + i;
             }
         };
-        using type = mat_t<std::uint16_t, accessor_policy>;
-        using const_type = cmat_t<std::uint16_t, accessor_policy>;
+        using type = mat_t<std::uint16_t, accessor_policy<>>;
+        using const_type = cmat_t<std::uint16_t, accessor_policy<true>>;
     };
 
     template<>
     struct matrix<data_type::BF16>
     {
+        template<bool C = false>
         struct accessor_policy
         {
-            using element_type = std::uint16_t;
-            using data_handle_type = std::uint16_t *;
+            using element_type = conditionally_const_t<std::uint16_t, C>;
+            using data_handle_type = std::add_pointer_t<element_type>;
             using reference = float;
             using offset_policy = accessor_policy;
 
@@ -135,17 +141,18 @@ namespace culpeo::inference::util {
             }
         };
 
-        using type = mat_t<std::uint16_t, accessor_policy>;
-        using const_type = cmat_t<std::uint16_t, accessor_policy>;
+        using type = mat_t<std::uint16_t, accessor_policy<>>;
+        using const_type = cmat_t<std::uint16_t, accessor_policy<true>>;
     };
 
     template<>
     struct matrix<data_type::BOOL>
     {
+        template<bool C = false>
         struct accessor_policy
         {
-            using element_type = std::uint8_t;
-            using data_handle_type = std::uint8_t *;
+            using element_type = conditionally_const_t<std::uint8_t, C>;
+            using data_handle_type = std::add_pointer_t<element_type>;
             using reference = bool;
             using offset_policy = accessor_policy;
 
@@ -160,8 +167,8 @@ namespace culpeo::inference::util {
             }
         };
 
-        using type = mat_t<std::uint8_t, accessor_policy>;
-        using const_type = cmat_t<std::uint8_t, accessor_policy>;
+        using type = mat_t<std::uint8_t, accessor_policy<>>;
+        using const_type = cmat_t<std::uint8_t, accessor_policy<true>>;
     };
 
     template<>

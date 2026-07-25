@@ -4,21 +4,17 @@
 #include <cstdint>
 #include <type_traits>
 
-#include <util/types.h>
-
 #include <catch2/catch_test_macros.hpp>
+#include <util/types.h>
 
 using namespace culpeo::inference::util;
 
 namespace {
 
-    using f16_acc = matrix<data_type::F16>::accessor_policy;
-    using bf16_acc = matrix<data_type::BF16>::accessor_policy;
-    using bool_acc = matrix<data_type::BOOL>::accessor_policy;
+    using f16_acc = matrix<data_type::F16>::accessor_policy<>;
+    using bf16_acc = matrix<data_type::BF16>::accessor_policy<>;
+    using bool_acc = matrix<data_type::BOOL>::accessor_policy<>;
 
-    // Exact bitwise float comparison: no tolerance, and it distinguishes +0/-0.
-    // fp16->f32 and bf16->f32 are both *exact* widenings, so every finite
-    // expectation below is an equality, not an approximation.
     [[nodiscard]] bool bit_eq(float a, float b) noexcept
     {
         return std::bit_cast<std::uint32_t>(a) == std::bit_cast<std::uint32_t>(b);
@@ -34,11 +30,7 @@ namespace {
         return bf16_acc{}.access(&bits, 0);
     }
 
-} // namespace
-
-// ---------------------------------------------------------------------------
-// F16 accessor
-// ---------------------------------------------------------------------------
+}
 
 TEST_CASE("F16: normal values", "[f16]")
 {
@@ -60,8 +52,6 @@ TEST_CASE("F16: signed zero", "[f16]")
 
 TEST_CASE("F16: subnormals", "[f16]")
 {
-    // These fall through the exponent==0 && mantissa!=0 path. A naive
-    // "treat like a normal" implementation gets these wrong.
     REQUIRE(bit_eq(f16(0x0001), 0x1p-24f));   // smallest positive subnormal
     REQUIRE(bit_eq(f16(0x03FF), 0x3FFp-24f)); // largest subnormal, 1023 * 2^-24
     REQUIRE(bit_eq(f16(0x8001), -0x1p-24f));  // negative subnormal
@@ -235,4 +225,114 @@ TEST_CASE("float_matrix concept is satisfied", "[concept]")
     STATIC_REQUIRE(float_matrix<matrix<data_type::F64>::type>);
     STATIC_REQUIRE(float_matrix<matrix<data_type::F16>::type>);
     STATIC_REQUIRE(float_matrix<matrix<data_type::BF16>::type>);
+}
+
+// ---------------------------------------------------------------------------
+// const_type — read-only views
+// ---------------------------------------------------------------------------
+//
+// These assume the converting/bool accessors have been made const-correct so
+// that matrix<D>::const_type is well-formed:
+//
+//     element_type     = const <storage>     (const uint16_t / const uint8_t)
+//     data_handle_type = const <storage>*
+//     reference        = float | bool        (unchanged; access is by value)
+//
+// The element_type assertions below aren't just documentation: mdspan Mandates
+// element_type == accessor::element_type, so the only way const_type compiles
+// at all is if these hold. They pin the contract the fix has to meet.
+
+TEST_CASE("const_type: element_type is const-qualified", "[const][traits]")
+{
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F16>::const_type::element_type, const std::uint16_t>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BF16>::const_type::element_type, const std::uint16_t>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BOOL>::const_type::element_type, const std::uint8_t>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F32>::const_type::element_type, const float>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F64>::const_type::element_type, const double>);
+
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F16>::const_type::reference, float>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BF16>::const_type::reference, float>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BOOL>::const_type::reference, bool>);
+}
+
+TEST_CASE("F16 const_type: reads through a const view", "[const][f16][mdspan]")
+{
+    using CMat = matrix<data_type::F16>::const_type;
+
+    const std::array<std::uint16_t, 6> buf{
+        0x3C00, 0x4000, 0x4200, // 1, 2, 3
+        0x4400, 0x4500, 0x4600  // 4, 5, 6
+    };
+
+    CMat m(buf.data(), 2, 3);
+
+    REQUIRE(m.extent(0) == 2);
+    REQUIRE(m.extent(1) == 3);
+    REQUIRE(bit_eq(m[0, 0], 1.0f));
+    REQUIRE(bit_eq(m[0, 2], 3.0f));
+    REQUIRE(bit_eq(m[1, 0], 4.0f));
+    REQUIRE(bit_eq(m[1, 2], 6.0f));
+}
+
+TEST_CASE("BF16 const_type: reads through a const view", "[const][bf16][mdspan]")
+{
+    using CMat = matrix<data_type::BF16>::const_type;
+
+    const std::array<std::uint16_t, 4> buf{
+        0x3F80, 0x4000, // 1, 2
+        0x4040, 0x4080  // 3, 4
+    };
+
+    CMat m(buf.data(), 2, 2);
+
+    REQUIRE(bit_eq(m[0, 0], 1.0f));
+    REQUIRE(bit_eq(m[0, 1], 2.0f));
+    REQUIRE(bit_eq(m[1, 0], 3.0f));
+    REQUIRE(bit_eq(m[1, 1], 4.0f));
+}
+
+TEST_CASE("BOOL const_type: reads through a const view", "[const][bool][mdspan]")
+{
+    using CMat = matrix<data_type::BOOL>::const_type;
+
+    const std::array<std::uint8_t, 4> buf{0, 1, 2, 0};
+    CMat m(buf.data(), 2, 2);
+
+    // Extra parens guard the multidim subscript's comma from the REQUIRE macro.
+    REQUIRE_FALSE((m[0, 0]));
+    REQUIRE((m[0, 1]));
+    REQUIRE((m[1, 0]));
+    REQUIRE_FALSE((m[1, 1]));
+}
+
+TEST_CASE("F32 const_type: reads through a const view", "[const][f32][mdspan]")
+{
+    using CMat = matrix<data_type::F32>::const_type;
+
+    const std::array<float, 4> buf{1.5f, 2.5f, 3.5f, 4.5f};
+    CMat m(buf.data(), 2, 2);
+
+    REQUIRE(bit_eq(m[0, 0], 1.5f));
+    REQUIRE(bit_eq(m[1, 1], 4.5f));
+}
+
+TEST_CASE("const_type accessor: offset invariant", "[const][accessor][offset]")
+{
+    using CAcc = matrix<data_type::F16>::const_type::accessor_type;
+    STATIC_REQUIRE(std::is_same_v<CAcc::offset_policy, CAcc>);
+
+    const std::array<std::uint16_t, 4> d{0x3C00, 0x4000, 0x4200, 0x4400}; // 1, 2, 3, 4
+    CAcc a;
+
+    // access(offset(p, i), j) == access(p, i + j)
+    REQUIRE(bit_eq(a.access(a.offset(d.data(), 1), 1), a.access(d.data(), 2)));
+    REQUIRE(bit_eq(a.access(a.offset(d.data(), 2), 0), a.access(d.data(), 2)));
+}
+
+TEST_CASE("const_type satisfies float_matrix", "[const][concept]")
+{
+    STATIC_REQUIRE(float_matrix<matrix<data_type::F16>::const_type>);
+    STATIC_REQUIRE(float_matrix<matrix<data_type::BF16>::const_type>);
+    STATIC_REQUIRE(float_matrix<matrix<data_type::F32>::const_type>);
+    STATIC_REQUIRE(float_matrix<matrix<data_type::F64>::const_type>);
 }
