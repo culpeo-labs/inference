@@ -16,7 +16,7 @@ foreach(t operations test_ops)
   target_link_options(${t} PRIVATE -fsanitize=address,undefined)
 endforeach()
 
-enable_testing()
-include(CTest)
 include(Catch)
-catch_discover_tests(test_ops)
+catch_discover_tests(test_ops
+  TEST_PREFIX "operations"
+)

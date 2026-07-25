@@ -20,7 +20,7 @@ namespace culpeo::inference::model
         {
             util::data_type dtype;
             std::vector<std::size_t> shape;
-            std::vector<std::size_t> offsets;
+            std::vector<std::size_t> data_offsets;
         };
 
         static std::expected<safetensors, std::string> load(const std::filesystem::path& path);

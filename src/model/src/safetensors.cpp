@@ -62,6 +62,10 @@ namespace glz
 
 std::expected<model::safetensors, std::string> model::safetensors::load(const std::filesystem::path& path)
 {
+    if (!std::filesystem::exists(path))
+    {
+        return std::unexpected("File does not exist");
+    }
     const auto file_size = std::filesystem::file_size(path);
     auto fd = fopen(path.c_str(), "rb");
     if (!fd)
@@ -109,11 +113,11 @@ std::expected<model::tensor, std::string> model::safetensors::get_tensor(std::st
 {
     if (!m_tensors.contains(name))
     {
-        std::unexpected{ "Tensor not found." };
+        return std::unexpected{ "Tensor not found." };
     }
     const auto & descriptor = m_tensors.find(name)->second;
-    auto offset = descriptor.offsets[0] + m_data_offset;
-    auto size = descriptor.offsets[1] - descriptor.offsets[0];
+    auto offset = descriptor.data_offsets[0] + m_data_offset;
+    auto size = descriptor.data_offsets[1] - descriptor.data_offsets[0];
     std::shared_ptr<const void> data{ m_data, reinterpret_cast<const void *>(static_cast<const uint8_t *>(m_data.get()) + offset) };
     return tensor{ data, size, descriptor.dtype, descriptor.shape };
 }
