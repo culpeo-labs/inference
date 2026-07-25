@@ -35,9 +35,9 @@ struct glz::meta<types::header>
 };
 
 template<>
-struct glz::meta<types::data_type>
+struct glz::meta<culpeo::inference::util::data_type>
 {
-    using enum types::data_type;
+    using enum culpeo::inference::util::data_type;
 
     static constexpr auto value = glz::enumerate(
         BF16,
