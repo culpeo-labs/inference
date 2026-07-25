@@ -14,7 +14,7 @@
 int main(int, char **)
 {
     constexpr std::string_view path{ "/workspaces/inference/model.safetensors"};
-    const auto t = culpeo::loader::safe_tensors::load({ path });
+    const auto t = culpeo::inference::loader::safe_tensors::load({ path });
     std::cout << "Count: " << t.tensor_count() << std::endl;
     for (auto & name : t.keys())
     {

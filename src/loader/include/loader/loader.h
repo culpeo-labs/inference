@@ -2,16 +2,14 @@
 
 #include <util/types.h>
 #include "loader/types/header.h"
-#include <bit>
 #include <expected>
 #include <filesystem>
 #include <memory>
 #include <string_view>
 #include <vector>
-#include <numeric>
 #include <stdfloat>
 
-namespace culpeo::loader {
+namespace culpeo::inference::loader {
 
     class tensor
     {
@@ -26,7 +24,16 @@ namespace culpeo::loader {
         tensor & operator=(const tensor &) = delete;
         // tensor & operator=(tensor &&) = default;
 
-        // culpeo::inference::util::cmat_t<std::floatbfloat16_t> as_cmat() const;
+        inline util::data_type dtype() const { return m_desc.dtype; }
+
+        template<util::data_type D>
+        inline util::matrix<D>::const_type as_cmat() const
+        {
+            static_assert(D == m_desc.dtype, "Tensor data type does not match requested data type");
+            using T = typename util::matrix<D>::const_type;
+            return T{
+                reinterpret_cast<T::data_handle_type>(m_data.get()), m_desc.shape[0], m_desc.shape[1] };
+        }
     };
 
 

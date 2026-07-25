@@ -5,7 +5,7 @@
 
 #include <util/types.h>
 
-namespace culpeo::loader::types {
+namespace culpeo::inference::loader::types {
 
 
     struct tensor_descriptor

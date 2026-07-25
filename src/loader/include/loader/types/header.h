@@ -6,7 +6,7 @@
 
 #include "loader/types/tensor.h"
 
-namespace culpeo::loader::types {
+namespace culpeo::inference::loader::types {
 
     struct header
     {

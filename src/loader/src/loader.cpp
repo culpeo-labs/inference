@@ -20,7 +20,7 @@
 #include <glaze/glaze.hpp>
 
 
-using namespace culpeo::loader;
+using namespace culpeo::inference::loader;
 
 template<>
 struct glz::meta<types::header>
