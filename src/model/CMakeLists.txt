@@ -1,4 +1,5 @@
 set(SOURCE_FILES
+    src/config.cpp
     src/safetensors.cpp
     src/tensor.cpp
 )
@@ -6,6 +7,7 @@ set(SOURCE_FILES
 set(PUBLIC_HEADERS
     include/model/safetensors.h
     include/model/tensor.h
+    include/model/hf/llama_config.h
 )
 
 add_library(model ${SOURCE_FILES} ${PUBLIC_HEADERS})
