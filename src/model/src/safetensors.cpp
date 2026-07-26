@@ -119,5 +119,5 @@ std::expected<model::tensor, std::string> model::safetensors::get_tensor(std::st
     auto offset = descriptor.data_offsets[0] + m_data_offset;
     auto size = descriptor.data_offsets[1] - descriptor.data_offsets[0];
     std::shared_ptr<const void> data{ m_data, reinterpret_cast<const void *>(static_cast<const uint8_t *>(m_data.get()) + offset) };
-    return tensor{ data, size, descriptor.dtype, descriptor.shape };
+    return tensor{ data, offset, size, descriptor.dtype, descriptor.shape };
 }

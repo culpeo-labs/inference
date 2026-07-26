@@ -12,7 +12,7 @@ namespace culpeo::inference::model
     class tensor
     {
     public:
-        tensor(std::shared_ptr<const void> data, std::size_t size, util::data_type dtype, std::vector<std::size_t> shape);
+        tensor(std::shared_ptr<const void> data, std::size_t original_offset, std::size_t size, util::data_type dtype, std::vector<std::size_t> shape);
 
         template<util::data_type dtype>
         std::expected<typename util::matrix<dtype>::const_type, std::string> as_mat() const
@@ -26,10 +26,21 @@ namespace culpeo::inference::model
             {
                 return std::unexpected{ "Tensor is not a matrix" };
             }
-            return mat_t{ static_cast<mat_t::data_handle_type>(m_data.get()), m_shape[0], m_shape[1] };
+            using T = std::remove_cvref_t<typename mat_t::element_type>;
+            if (m_original_offset % alignof(T) != 0)
+            {
+                return std::unexpected{ "Tensor data is not aligned for requested type" };
+            }
+            if (m_size != sizeof(T) * m_shape[0] * m_shape[1])
+            {
+                return std::unexpected{ "Tensor size does not match shape" };
+            }
+            auto tensor_data = std::start_lifetime_as_array<T>(m_data.get(), m_size / sizeof(T));
+            return mat_t{ tensor_data, m_shape[0], m_shape[1] };
         }
     private:
         std::shared_ptr<const void> m_data;
+        std::size_t m_original_offset;
         std::size_t m_size;
         util::data_type m_dtype;
         std::vector<std::size_t> m_shape;
