@@ -4,12 +4,14 @@
 #include <type_traits>
 #include <filesystem>
 
+#include <model/model_family.h>
 #include <model/hf/llama_config.h>
 
 namespace culpeo::inference::model
 {
     struct config
     {
+        model_family family;
         std::size_t head_dim;
         std::size_t hidden_size;
         std::size_t intermediate_size;

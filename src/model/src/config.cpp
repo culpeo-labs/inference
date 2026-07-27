@@ -49,6 +49,7 @@ std::expected<model::config, std::string> model::config::load<model::hf::llama_c
     }
 
     return model::config{
+        .family = model::model_family::llama,
         .head_dim = config.head_dim.value_or(
             config.hidden_size / config.num_attention_heads
         ),

@@ -1,10 +1,13 @@
 set(SOURCE_FILES
     src/config.cpp
+    src/model.cpp
     src/safetensors.cpp
     src/tensor.cpp
 )
 
 set(PUBLIC_HEADERS
+    include/model/model.h
+    include/model/model_family.h
     include/model/safetensors.h
     include/model/tensor.h
     include/model/hf/llama_config.h
