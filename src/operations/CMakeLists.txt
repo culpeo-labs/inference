@@ -19,4 +19,6 @@ endforeach()
 include(Catch)
 catch_discover_tests(test_ops
   TEST_PREFIX "operations"
+  PROPERTIES
+    LABELS "operations"
 )

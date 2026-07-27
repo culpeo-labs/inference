@@ -7,4 +7,6 @@ target_link_libraries(util_test PRIVATE util Catch2::Catch2WithMain)
 include(Catch)
 catch_discover_tests(util_test
     TEST_PREFIX "util"
+    PROPERTIES
+       LABELS "util"
 )
