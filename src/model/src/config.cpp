@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <expected>
 #include <filesystem>
 #include <glaze/core/opts.hpp>
@@ -21,7 +22,17 @@ std::expected<model::config, std::string> model::config::load<model::hf::llama_c
     const auto error = glz::read_file_json<glz::opts{ .error_on_unknown_keys = false, .error_on_missing_keys = true }>(config, path.c_str(), std::string{});
     if (error)
     {
-        return std::unexpected("Error parsing headers.");
+        return std::unexpected("Error parsing config.");
+    }
+
+    if (std::find(config.architectures.begin(), config.architectures.end(), "LlamaForCausalLM") == config.architectures.end())
+    {
+        return std::unexpected("architectures must contain LlamaForCausalLM");
+    }
+
+    if (config.num_attention_heads == 0)
+    {
+        return std::unexpected("num_attention_heads must be nonzero");
     }
 
     if (config.num_key_value_heads.has_value())
@@ -50,5 +61,6 @@ std::expected<model::config, std::string> model::config::load<model::hf::llama_c
         .rope_theta = config.rope_theta,
         .tie_word_embeddings = config.tie_word_embeddings,
         .vocab_size = config.vocab_size,
+        .original_max_position_embeddings = config.rope_scaling.transform([](auto& r) { return r.original_max_position_embeddings; })
     };
 }

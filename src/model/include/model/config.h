@@ -20,6 +20,7 @@ namespace culpeo::inference::model
         float rope_theta;
         bool tie_word_embeddings;
         std::size_t vocab_size;
+        std::optional<std::size_t> original_max_position_embeddings;
 
         template<typename ConfigT>
         static std::expected<config, std::string> load(const std::filesystem::path &)
