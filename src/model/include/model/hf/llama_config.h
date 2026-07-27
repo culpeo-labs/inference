@@ -26,13 +26,13 @@ namespace culpeo::inference::model::hf
         std::size_t hidden_size;
         std::size_t intermediate_size;
         std::size_t num_attention_heads;
-        std::size_t num_hiddlen_layers;
+        std::size_t num_hidden_layers;
         std::optional<size_t> num_key_value_heads;
         float rms_norm_eps;
-        rope_scaling rope_scaling;
+        std::optional<rope_scaling> rope_scaling;
         float rope_theta;
         bool tie_word_embeddings;
-        util::data_type torch_dtype;
+        std::string torch_dtype;
         std::size_t vocab_size;
     };
 }

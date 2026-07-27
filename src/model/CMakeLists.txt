@@ -16,8 +16,13 @@ target_link_libraries(model PRIVATE glaze::glaze)
 target_link_libraries(model PUBLIC operations util)
 target_compile_options(model PRIVATE -Wall -Wextra)
 
-add_executable(model_test tests/model_tests.cpp)
-target_link_libraries(model_test PRIVATE model Catch2::Catch2WithMain)
+set(TEST_FILES
+    tests/model_tests.cpp
+    tests/config_tests.cpp
+)
+
+add_executable(model_test ${TEST_FILES})
+target_link_libraries(model_test PRIVATE model Catch2::Catch2WithMain glaze::glaze)
 target_include_directories(model_test PRIVATE tests)
 target_compile_definitions(model_test PRIVATE FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests")
 

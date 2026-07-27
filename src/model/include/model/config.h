@@ -10,10 +10,12 @@ namespace culpeo::inference::model
 {
     struct config
     {
+        std::size_t head_dim;
         std::size_t hidden_size;
         std::size_t intermediate_size;
         std::size_t num_attention_heads;
         std::size_t num_hidden_layers;
+        std::size_t num_key_value_heads;
         float rms_norm_eps;
         float rope_theta;
         bool tie_word_embeddings;
@@ -24,7 +26,6 @@ namespace culpeo::inference::model
         {
             static_assert(std::false_type::value, "Unsupported config type");
         }
-
     };
 
     template<>
