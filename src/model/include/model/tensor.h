@@ -40,7 +40,7 @@ namespace culpeo::inference::model
         }
 
         template<util::data_type dtype>
-        std::expected<typename util::matrix<dtype>::template const_type<2>, std::string> as_vec() const
+        std::expected<typename util::matrix<dtype>::template const_type<1>, std::string> as_vec() const
         {
             using vec_t = typename util::matrix<dtype>::template const_type<1>;
             if (dtype != m_dtype)
