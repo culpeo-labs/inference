@@ -166,7 +166,7 @@ TEST_CASE("offset_policy is the accessor itself", "[accessor][traits]")
 
 TEST_CASE("F16 matrix: 2D indexing through mdspan", "[f16][mdspan]")
 {
-    using MatF16 = matrix<data_type::F16>::type;
+    using MatF16 = matrix<data_type::F16>::type<2>;
 
     // 2x3, layout_right:  [ 1 2 3 ]
     //                     [ 4 5 6 ]
@@ -189,7 +189,7 @@ TEST_CASE("F16 matrix: 2D indexing through mdspan", "[f16][mdspan]")
 
 TEST_CASE("BF16 matrix: 2D indexing through mdspan", "[bf16][mdspan]")
 {
-    using MatBF16 = matrix<data_type::BF16>::type;
+    using MatBF16 = matrix<data_type::BF16>::type<2>;
 
     std::array<std::uint16_t, 4> buf{
         0x3F80, 0x4000, // 1, 2
@@ -210,21 +210,21 @@ TEST_CASE("BF16 matrix: 2D indexing through mdspan", "[bf16][mdspan]")
 
 TEST_CASE("type aliases expose the expected reference type", "[traits]")
 {
-    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F16>::type::reference, float>);
-    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BF16>::type::reference, float>);
-    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F32>::type::reference, float &>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F16>::type<2>::reference, float>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BF16>::type<2>::reference, float>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F32>::type<2>::reference, float &>);
 
     // F32/F64 const_type is well-formed (default_accessor<const T>).
-    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F32>::const_type::element_type, const float>);
-    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F64>::const_type::element_type, const double>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F32>::const_type<2>::element_type, const float>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F64>::const_type<2>::element_type, const double>);
 }
 
 TEST_CASE("float_matrix concept is satisfied", "[concept]")
 {
-    STATIC_REQUIRE(float_matrix<matrix<data_type::F32>::type>);
-    STATIC_REQUIRE(float_matrix<matrix<data_type::F64>::type>);
-    STATIC_REQUIRE(float_matrix<matrix<data_type::F16>::type>);
-    STATIC_REQUIRE(float_matrix<matrix<data_type::BF16>::type>);
+    STATIC_REQUIRE(float_matrix<matrix<data_type::F32>::type<2>>);
+    STATIC_REQUIRE(float_matrix<matrix<data_type::F64>::type<2>>);
+    STATIC_REQUIRE(float_matrix<matrix<data_type::F16>::type<2>>);
+    STATIC_REQUIRE(float_matrix<matrix<data_type::BF16>::type<2>>);
 }
 
 // ---------------------------------------------------------------------------
@@ -244,20 +244,20 @@ TEST_CASE("float_matrix concept is satisfied", "[concept]")
 
 TEST_CASE("const_type: element_type is const-qualified", "[const][traits]")
 {
-    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F16>::const_type::element_type, const std::uint16_t>);
-    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BF16>::const_type::element_type, const std::uint16_t>);
-    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BOOL>::const_type::element_type, const std::uint8_t>);
-    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F32>::const_type::element_type, const float>);
-    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F64>::const_type::element_type, const double>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F16>::const_type<2>::element_type, const std::uint16_t>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BF16>::const_type<2>::element_type, const std::uint16_t>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BOOL>::const_type<2>::element_type, const std::uint8_t>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F32>::const_type<2>::element_type, const float>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F64>::const_type<2>::element_type, const double>);
 
-    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F16>::const_type::reference, float>);
-    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BF16>::const_type::reference, float>);
-    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BOOL>::const_type::reference, bool>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::F16>::const_type<2>::reference, float>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BF16>::const_type<2>::reference, float>);
+    STATIC_REQUIRE(std::is_same_v<matrix<data_type::BOOL>::const_type<2>::reference, bool>);
 }
 
 TEST_CASE("F16 const_type: reads through a const view", "[const][f16][mdspan]")
 {
-    using CMat = matrix<data_type::F16>::const_type;
+    using CMat = matrix<data_type::F16>::const_type<2>;
 
     const std::array<std::uint16_t, 6> buf{
         0x3C00, 0x4000, 0x4200, // 1, 2, 3
@@ -276,7 +276,7 @@ TEST_CASE("F16 const_type: reads through a const view", "[const][f16][mdspan]")
 
 TEST_CASE("BF16 const_type: reads through a const view", "[const][bf16][mdspan]")
 {
-    using CMat = matrix<data_type::BF16>::const_type;
+    using CMat = matrix<data_type::BF16>::const_type<2>;
 
     const std::array<std::uint16_t, 4> buf{
         0x3F80, 0x4000, // 1, 2
@@ -293,7 +293,7 @@ TEST_CASE("BF16 const_type: reads through a const view", "[const][bf16][mdspan]"
 
 TEST_CASE("BOOL const_type: reads through a const view", "[const][bool][mdspan]")
 {
-    using CMat = matrix<data_type::BOOL>::const_type;
+    using CMat = matrix<data_type::BOOL>::const_type<2>;
 
     const std::array<std::uint8_t, 4> buf{0, 1, 2, 0};
     CMat m(buf.data(), 2, 2);
@@ -307,7 +307,7 @@ TEST_CASE("BOOL const_type: reads through a const view", "[const][bool][mdspan]"
 
 TEST_CASE("F32 const_type: reads through a const view", "[const][f32][mdspan]")
 {
-    using CMat = matrix<data_type::F32>::const_type;
+    using CMat = matrix<data_type::F32>::const_type<2>;
 
     const std::array<float, 4> buf{1.5f, 2.5f, 3.5f, 4.5f};
     CMat m(buf.data(), 2, 2);
@@ -318,7 +318,7 @@ TEST_CASE("F32 const_type: reads through a const view", "[const][f32][mdspan]")
 
 TEST_CASE("const_type accessor: offset invariant", "[const][accessor][offset]")
 {
-    using CAcc = matrix<data_type::F16>::const_type::accessor_type;
+    using CAcc = matrix<data_type::F16>::const_type<2>::accessor_type;
     STATIC_REQUIRE(std::is_same_v<CAcc::offset_policy, CAcc>);
 
     const std::array<std::uint16_t, 4> d{0x3C00, 0x4000, 0x4200, 0x4400}; // 1, 2, 3, 4
@@ -331,8 +331,8 @@ TEST_CASE("const_type accessor: offset invariant", "[const][accessor][offset]")
 
 TEST_CASE("const_type satisfies float_matrix", "[const][concept]")
 {
-    STATIC_REQUIRE(float_matrix<matrix<data_type::F16>::const_type>);
-    STATIC_REQUIRE(float_matrix<matrix<data_type::BF16>::const_type>);
-    STATIC_REQUIRE(float_matrix<matrix<data_type::F32>::const_type>);
-    STATIC_REQUIRE(float_matrix<matrix<data_type::F64>::const_type>);
+    STATIC_REQUIRE(float_matrix<matrix<data_type::F16>::const_type<2>>);
+    STATIC_REQUIRE(float_matrix<matrix<data_type::BF16>::const_type<2>>);
+    STATIC_REQUIRE(float_matrix<matrix<data_type::F32>::const_type<2>>);
+    STATIC_REQUIRE(float_matrix<matrix<data_type::F64>::const_type<2>>);
 }

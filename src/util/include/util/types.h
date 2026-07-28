@@ -31,12 +31,14 @@ namespace culpeo::inference::util {
     template<typename M>
     concept float_matrix = (M::rank() == 2 && std::convertible_to<typename M::reference, float>);
 
-    template<typename T, typename AccessorPolicy = std::default_accessor<T>>
-    using mat_t = std::mdspan<T, std::dextents<std::size_t, 2>, std::layout_right, AccessorPolicy>;
+    template<typename M>
+    concept float_vector = (M::rank() == 1 && std::convertible_to<typename M::reference, float>);
 
+    template<typename T, size_t Rank = 2, typename AccessorPolicy = std::default_accessor<T>>
+    using mat_t = std::mdspan<T, std::dextents<std::size_t, Rank>, std::layout_right, AccessorPolicy>;
 
-    template<typename T, typename AccessorPolicy = std::default_accessor<const T>>
-    using cmat_t = mat_t<const T, AccessorPolicy>;
+    template<typename T, size_t Rank = 2, typename AccessorPolicy = std::default_accessor<const T>>
+    using cmat_t = mat_t<const T, Rank, AccessorPolicy>;
 
     template<typename T>
         requires(std::floating_point<T>)
@@ -56,15 +58,19 @@ namespace culpeo::inference::util {
     template<>
     struct matrix<data_type::F32>
     {
-        using type = mat_t<float>;
-        using const_type = cmat_t<float>;
+        template<std::size_t Rank>
+        using type = mat_t<float, Rank>;
+        template<std::size_t Rank>
+        using const_type = cmat_t<float, Rank>;
     };
 
     template<>
     struct matrix<data_type::F64>
     {
-        using type = mat_t<double>;
-        using const_type = cmat_t<double>;
+        template<std::size_t Rank>
+        using type = mat_t<double, Rank>;
+        template<std::size_t Rank>
+        using const_type = cmat_t<double, Rank>;
     };
 
     template<>
@@ -114,8 +120,10 @@ namespace culpeo::inference::util {
                 return p + i;
             }
         };
-        using type = mat_t<std::uint16_t, accessor_policy<>>;
-        using const_type = cmat_t<std::uint16_t, accessor_policy<true>>;
+        template<std::size_t Rank>
+        using type = mat_t<std::uint16_t, Rank, accessor_policy<>>;
+        template<std::size_t Rank>
+        using const_type = cmat_t<std::uint16_t, Rank, accessor_policy<true>>;
     };
 
     template<>
@@ -141,8 +149,10 @@ namespace culpeo::inference::util {
             }
         };
 
-        using type = mat_t<std::uint16_t, accessor_policy<>>;
-        using const_type = cmat_t<std::uint16_t, accessor_policy<true>>;
+        template<std::size_t Rank>
+        using type = mat_t<std::uint16_t, Rank, accessor_policy<>>;
+        template<std::size_t Rank>
+        using const_type = cmat_t<std::uint16_t, Rank,  accessor_policy<true>>;
     };
 
     template<>
@@ -167,42 +177,54 @@ namespace culpeo::inference::util {
             }
         };
 
-        using type = mat_t<std::uint8_t, accessor_policy<>>;
-        using const_type = cmat_t<std::uint8_t, accessor_policy<true>>;
+        template<std::size_t Rank>
+        using type = mat_t<std::uint8_t, Rank, accessor_policy<>>;
+        template<std::size_t Rank>
+        using const_type = cmat_t<std::uint8_t, Rank, accessor_policy<true>>;
     };
 
     template<>
     struct matrix<data_type::I8>
     {
-        using type = mat_t<std::int8_t>;
-        using const_type = cmat_t<std::int8_t>;
+        template<std::size_t Rank>
+        using type = mat_t<std::int8_t, Rank>;
+        template<std::size_t Rank>
+        using const_type = cmat_t<std::int8_t, Rank>;
     };
 
     template<>
     struct matrix<data_type::U8>
     {
-        using type = mat_t<std::uint8_t>;
-        using const_type = cmat_t<std::uint8_t>;
+        template<std::size_t Rank>
+        using type = mat_t<std::uint8_t, Rank>;
+        template<std::size_t Rank>
+        using const_type = cmat_t<std::uint8_t, Rank>;
     };
 
     template<>
     struct matrix<data_type::I16>
     {
-        using type = mat_t<std::int16_t>;
-        using const_type = cmat_t<std::int16_t>;
+        template<std::size_t Rank>
+        using type = mat_t<std::int16_t, Rank>;
+        template<std::size_t Rank>
+        using const_type = cmat_t<std::int16_t, Rank>;
     };
 
     template<>
     struct matrix<data_type::I32>
     {
-        using type = mat_t<std::int32_t>;
-        using const_type = cmat_t<std::int32_t>;
+        template<std::size_t Rank>
+        using type = mat_t<std::int32_t, Rank>;
+        template<std::size_t Rank>
+        using const_type = cmat_t<std::int32_t, Rank>;
     };
 
     template<>
     struct matrix<data_type::I64>
     {
-        using type = mat_t<std::int64_t>;
-        using const_type = cmat_t<std::int64_t>;
+        template<std::size_t Rank>
+        using type = mat_t<std::int64_t, Rank>;
+        template<std::size_t Rank>
+        using const_type = cmat_t<std::int64_t, Rank>;
     };
 }
