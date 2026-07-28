@@ -113,7 +113,7 @@ std::expected<model::tensor, std::string> model::safetensors::get_tensor(std::st
 {
     if (!m_tensors.contains(name))
     {
-        return std::unexpected{ "Tensor not found." };
+        return std::unexpected{ std::format("Tensor not found: {}", name) };
     }
     const auto & descriptor = m_tensors.find(name)->second;
     auto offset = descriptor.data_offsets[0] + m_data_offset;

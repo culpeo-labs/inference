@@ -26,7 +26,7 @@ struct tensor_names
 template<>
 struct tensor_names<model::model_family::llama>
 {
-    static constexpr auto embed_tokens{ "model.embed.token.weights"sv };
+    static constexpr auto embed_tokens{ "model.embed_tokens.weight"sv };
     static constexpr auto norm{ "model.norm.weight"sv };
     static constexpr auto input_layer_norm{ "model.layers.{}.input_layernorm.weight"sv };
     static constexpr auto q_proj{ "model.layers.{}.self_attn.q_proj.weight"sv };
