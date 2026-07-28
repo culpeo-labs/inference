@@ -32,11 +32,11 @@ namespace culpeo::inference::model
 
     struct model
     {
+        safetensors safetensors;
         std::vector<layer_weights> layers;
         bf16_cmat embed_tokens;
         bf16_cvec norm;
         bf16_cmat lm_head;
-        safetensors safetensors;
         static std::expected<model, std::string> load(const std::filesystem::path & dir);
     };
 }

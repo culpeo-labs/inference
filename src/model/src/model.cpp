@@ -26,8 +26,8 @@ struct tensor_names
 template<>
 struct tensor_names<model::model_family::llama>
 {
-    static constexpr auto embed_tokens{ "model.token.weights"sv };
-    static constexpr auto norm{ "model.norm.weights"sv };
+    static constexpr auto embed_tokens{ "model.embed.token.weights"sv };
+    static constexpr auto norm{ "model.norm.weight"sv };
     static constexpr auto input_layer_norm{ "model.layers.{}.input_layernorm.weight"sv };
     static constexpr auto q_proj{ "model.layers.{}.self_attn.q_proj.weight"sv };
     static constexpr auto k_proj{ "model.layers.{}.self_attn.k_proj.weight"sv };
@@ -186,7 +186,7 @@ std::expected<model::model, std::string> model::model::load(const std::filesyste
         return std::unexpected("Provided checkpoint path is not a directory.");
     }
     constexpr auto config_file_name{ "config.json"sv };
-    constexpr auto safetensors_file_name{ "safetensors.safetensors"sv };
+    constexpr auto safetensors_file_name{ "model.safetensors"sv };
     auto config = config::load<hf::llama_config>(dir / config_file_name);
     if (!config.has_value())
     {
@@ -236,11 +236,11 @@ std::expected<model::model, std::string> model::model::load(const std::filesyste
     }
     return model
     {
+        .safetensors = std::move(safetensors).value(),
         .layers = std::move(layers),
         .embed_tokens  = std::move(embed_tokens).value(),
         .norm = std::move(norm).value(),
         .lm_head = std::move(lm_head).value(),
-        .safetensors = std::move(safetensors).value(),
     };
 }
 
