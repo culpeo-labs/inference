@@ -150,19 +150,3 @@ TEMPLATE_TEST_CASE_SIG("cache_block: reading pos 0 yields exactly one row",
     auto view = block.read(0, 0);
     CHECK(view.extent(0) == 1);
 }
-
-TEMPLATE_TEST_CASE_SIG("cache_block: out-of-range write is rejected",
-                       "[cache]", ((data_type D), D),
-                       data_type::F32, data_type::BF16)
-{
-    constexpr std::size_t heads = 2, max_seq = 4, dims = 3;
-    cache::cache_block<D> block{ max_seq, heads, dims };
-    std::vector<typename codec<D>::storage> backing(dims, {});
-    auto vec = make_vec<D>(backing);
-
-    CHECK_THROWS(block.write(heads, 0, vec));        // head out of bounds
-    CHECK_THROWS(block.write(0, max_seq, vec));      // pos == cap (context full)
-
-    std::vector<typename codec<D>::storage> wrong(dims + 1, {});
-    CHECK_THROWS(block.write(0, 0, make_vec<D>(wrong)));  // dim mismatch
-}

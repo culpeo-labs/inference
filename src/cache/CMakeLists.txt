@@ -1,18 +1,15 @@
-set(SOURCE_FILES
-    src/cache.cpp
-)
-
 set(PUBLIC_HEADERS
     include/cache/cache_block.h
+    include/cache/kv_cache.h
 )
 
-add_library(cache ${SOURCE_FILES} ${PUBLIC_HEADERS})
-target_include_directories(cache PUBLIC include)
-target_link_libraries(cache PUBLIC util)
-target_compile_options(cache PRIVATE -Wall -Wextra)
+add_library(cache INTERFACE ${SOURCE_FILES} ${PUBLIC_HEADERS})
+target_include_directories(cache INTERFACE include)
+target_link_libraries(cache INTERFACE util)
 
 set(TEST_FILES
     tests/cache_block_tests.cpp
+    tests/kv_cache_tests.cpp
 )
 
 add_executable(cache_test ${TEST_FILES})

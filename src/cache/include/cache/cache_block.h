@@ -1,9 +1,9 @@
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <cstring>
 #include <memory>
-#include <stdexcept>
 
 #include <util/types.h>
 
@@ -14,8 +14,7 @@ namespace culpeo::inference::cache {
     {
     public:
         using vector_type = typename util::matrix<D>::template type<1>;
-        using cmatrix_type = typename util::matrix<D>::template type<2>;
-
+        using cmatrix_type = typename util::matrix<D>::template const_type<2>;
 
         explicit cache_block(std::size_t max_sequence_length, std::size_t heads, std::size_t dims):
             m_heads{ heads },
@@ -25,20 +24,11 @@ namespace culpeo::inference::cache {
             m_buffer{ std::make_unique<element_type[]>(m_size) }
         {}
 
-        void write(std::ptrdiff_t head, std::ptrdiff_t pos, const vector_type& vec)
+        void write(std::size_t head, std::size_t pos, const vector_type& vec)
         {
-            if (vec.extent(0) != m_dims)
-            {
-                throw std::runtime_error{ "Vector size mismatch" };
-            }
-            if (head >= m_heads)
-            {
-                throw std::runtime_error{ "Head index out of bounds" };
-            }
-            if (pos >= m_max_sequence_length)
-            {
-                throw std::runtime_error{ "Position index out of bounds" };
-            }
+            assert(vec.extent(0) == m_dims);
+            assert(head < m_heads);
+            assert(pos < m_max_sequence_length);
             auto offset = head * m_max_sequence_length * m_dims + pos * m_dims;
             std::memcpy(m_buffer.get() + offset, vec.data_handle(), vec.size() * sizeof(element_type));
         }
@@ -46,14 +36,8 @@ namespace culpeo::inference::cache {
 
         cmatrix_type read(std::size_t head, std::size_t pos) const
         {
-            if (head >= m_heads)
-            {
-                throw std::runtime_error{ "Head index out of bounds" };
-            }
-            if (pos >= m_max_sequence_length)
-            {
-                throw std::runtime_error{ "Position index out of bounds" };
-            }
+            assert(head < m_heads);
+            assert(pos < m_max_sequence_length);
             auto offset = head * m_max_sequence_length * m_dims;
             return cmatrix_type{ m_buffer.get() + offset, pos + 1, m_dims };
         }
