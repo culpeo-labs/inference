@@ -34,6 +34,9 @@ namespace culpeo::inference::util {
     template<typename M>
     concept float_vector = (M::rank() == 1 && std::convertible_to<typename M::reference, float>);
 
+    template<typename M>
+    concept mutable_matrix = std::is_const_v<typename M::element_type>;
+
     template<typename T, size_t Rank = 2, typename AccessorPolicy = std::default_accessor<T>>
     using mat_t = std::mdspan<T, std::dextents<std::size_t, Rank>, std::layout_right, AccessorPolicy>;
 
