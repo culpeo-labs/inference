@@ -1,5 +1,11 @@
+set(SOURCES
+    src/ops.cpp
+)
 
-add_library(operations src/ops.cpp)
+set(PUBLIC_HEADERS
+    include/operations/ops.h
+)
+add_library(operations ${SOURCES} ${PUBLIC_HEADER})
 target_include_directories(operations PUBLIC include)
 target_link_libraries(operations PUBLIC util)
 target_compile_options(operations PRIVATE -Wall -Wextra)

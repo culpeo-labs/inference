@@ -1,4 +1,9 @@
-add_library(util INTERFACE)
+set(PUBLIC_HEADERS
+    include/util/scope_guard.h
+    include/util/types.h
+)
+
+add_library(util INTERFACE ${PUBLIC_HEADERS})
 target_include_directories(util INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_executable(util_test tests/test_types.cpp)
