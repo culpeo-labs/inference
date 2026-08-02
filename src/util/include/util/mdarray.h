@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <mdspan>
 #include <memory>
 
 #include <util/types.h>
@@ -28,6 +29,16 @@ namespace culpeo::inference::util
 
         mat_t mdspan() { return m_span; }
 
+        template<std::size_t ViewRank, typename... Ts>
+        typename matrix<D>::template type<ViewRank> view(Ts... extents)
+        {
+            static_assert(sizeof...(Ts) == ViewRank);
+            const auto view_size = (1 * ... * extents);
+            assert(view_size == m_size);
+            return (typename matrix<D>::template type<ViewRank>){ m_data.get(), extents...};
+
+        }
+
         auto operator[](std::ptrdiff_t i)
         {
             return m_span[i];
@@ -39,4 +50,29 @@ namespace culpeo::inference::util
         std::unique_ptr<element_type[]> m_data;
         mat_t m_span;
     };
+
+
+    template<typename ElementType, typename Extents, typename AccessorPolicy>
+    auto get_row(std::mdspan<ElementType, Extents, std::layout_right, AccessorPolicy> mat, std::size_t row)
+    {
+        static_assert(decltype(mat)::rank() == 2);
+        assert(row < mat.extent(0));
+        return std::mdspan<ElementType, std::dextents<std::size_t, 1>, std::layout_right, AccessorPolicy>
+        {
+            mat.data_handle() + mat.extent(1) * row,
+            mat.extent(1)
+        };
+    }
+
+    template<typename ElementType, typename Extents, typename AccessorPolicy>
+    auto sub_view(std::mdspan<ElementType, Extents, std::layout_right, AccessorPolicy> mat, std::size_t len)
+    {
+        static_assert(decltype(mat)::rank() == 1);
+        assert(len < mat.extent(0));
+        return std::mdspan<ElementType, std::dextents<std::size_t, 1>, std::layout_right, AccessorPolicy>
+        {
+            mat.data_handle(),
+            len
+        };
+    }
 }

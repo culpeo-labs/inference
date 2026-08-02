@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "golden.h"
+#include "util/mdarray.h"
 #include "util/types.h"
 #include <operations/ops.h>
 
@@ -20,6 +21,18 @@ static void check_close(const std::array<float, N> got, const std::array<float, 
   for (int i = 0; i < N; ++i) {
     INFO("index " << i << ": got " << got[i] << ", want " << want[i]);
     CHECK(std::abs(got[i] - want[i]) <=
+          abs_tol + rel_tol * std::abs(want[i]));
+  }
+}
+
+template<size_t N, std::size_t Rank>
+static void check_close(util::mdarray<util::data_type::F32, Rank> & got, const std::array<float, N> want,
+                        float abs_tol = 1e-5f, float rel_tol = 1e-4f) {
+  assert(got.size() == N);
+  auto vec = got.template view<1>(got.size());
+  for (int i = 0; i < N; ++i) {
+    INFO("index " << i << ": got " << vec[i] << ", want " << want[i]);
+    CHECK(std::abs(vec[i] - want[i]) <=
           abs_tol + rel_tol * std::abs(want[i]));
   }
 }
@@ -107,6 +120,17 @@ TEST_CASE("matvec: golden vector") {
   const std::mdspan<const float, std::dextents<std::size_t, 2>> W{golden::MATVEC_W.data(), golden::MATVEC_ROWS, golden::MATVEC_COLS};
   operations::matvec(
     as_mat(out.data(), golden::MATVEC_ROWS),
+    W,
+    as_mat(golden::MATVEC_X.data(), golden::MATVEC_COLS));
+  check_close(out, golden::MATVEC_OUT);
+}
+
+TEST_CASE("matvec: overwrites the output array") {
+  util::mdarray<util::data_type::F32, 1> out{golden::MATVEC_ROWS};
+  const std::mdspan<const float, std::dextents<std::size_t, 2>> W{golden::MATVEC_W.data(), golden::MATVEC_ROWS, golden::MATVEC_COLS};
+  for (int i = 0; i < golden::MATVEC_ROWS; ++i) out.mdspan()[i] = 100.0f;
+  operations::matvec(
+    out.mdspan(),
     W,
     as_mat(golden::MATVEC_X.data(), golden::MATVEC_COLS));
   check_close(out, golden::MATVEC_OUT);

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "model/config.h"
-#include "model/safetensors.h"
 #include <expected>
 #include <filesystem>
 #include <string>
-
-#include <util/types.h>
 #include <vector>
+
+#include <model/config.h>
+#include <model/safetensors.h>
+#include <util/types.h>
 
 namespace culpeo::inference::model
 {
