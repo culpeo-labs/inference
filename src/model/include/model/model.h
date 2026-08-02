@@ -1,5 +1,6 @@
 #pragma once
 
+#include "model/config.h"
 #include "model/safetensors.h"
 #include <expected>
 #include <filesystem>
@@ -32,6 +33,7 @@ namespace culpeo::inference::model
 
     struct model
     {
+        config config;
         safetensors safetensors;
         std::vector<layer_weights> layers;
         bf16_cmat embed_tokens;

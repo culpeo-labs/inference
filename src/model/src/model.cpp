@@ -236,6 +236,7 @@ std::expected<model::model, std::string> model::model::load(const std::filesyste
     }
     return model
     {
+        .config = std::move(config).value(),
         .safetensors = std::move(safetensors).value(),
         .layers = std::move(layers),
         .embed_tokens  = std::move(embed_tokens).value(),
