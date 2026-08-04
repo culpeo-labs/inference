@@ -26,7 +26,7 @@ def main():
         for line in sys.stdin:
             n = int(line)
             text = tok.decode(n, skip_special_tokens=True, clean_up_tokenization_spaces=False)
-            print(text, end="", )
+            print(text, end="", flush=True)
         print()
 
 
