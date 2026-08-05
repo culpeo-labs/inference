@@ -12,6 +12,7 @@
 #include <model/model.h>
 #include <operations/ops.h>
 #include <util/mdarray.h>
+#include <util/timers.h>
 #include <util/types.h>
 
 using namespace std::string_view_literals;
@@ -178,11 +179,15 @@ int main(int argc, char ** argv)
     std::ptrdiff_t next{};
     for (std::size_t i{ 0 }; i < prompt.size(); i++)
     {
+        static util::scope_timer input_timer("input-loop");
+        auto _ = input_timer.probe();
         log(std::format("Processing input token {}", prompt[i]));
         next = forward(ctx, prompt[i]);
     }
 
     for (int step = 0; step < 50; step++) {
+        static util::scope_timer generation_timer("generation-loop");
+        auto _ = generation_timer.probe();
         std::cout << next << std::endl;
         if (next == 128001 || next == 128009) break;   // <|end_of_text|> / <|eot_id|>
         log(std::format("Generating next token (prev: {})", next));
