@@ -39,10 +39,12 @@ namespace culpeo::inference::operations {
         assert(W.stride(0) == W.extent(1));
         for (std::size_t r = 0; r < W.extent(0); r++)
         {
+            float acc{ 0 };
             for (std::size_t c = 0; c < W.extent(1); c++)
             {
-                out[r] += W[r, c] * x[c];
+                acc += W[r, c] * x[c];
             }
+            out[r] = acc;
         }
     }
 
