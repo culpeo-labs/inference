@@ -1,13 +1,17 @@
+#include "util/timers.h"
 #include <cassert>
 #include <cstddef>
 #include <cmath>
 
 #include <operations/ops.h>
+#include <source_location>
 #include <util/types.h>
 
 using namespace culpeo::inference;
 
 void operations::rope(util::mat_t<float, 2> t, std::ptrdiff_t pos, float theta_base) {
+  static util::function_timer timer{ std::source_location::current() };
+  auto _ = timer.probe();
   assert(t.extent(1) % 2 == 0);
   for (std::size_t h = 0; h < t.extent(0); h++)
   {
@@ -26,6 +30,8 @@ void operations::rope(util::mat_t<float, 2> t, std::ptrdiff_t pos, float theta_b
 }
 
 void operations::softmax(util::mat_t<float, 1> x) {
+  static util::function_timer timer{ std::source_location::current() };
+  auto _ = timer.probe();
   float max = std::numeric_limits<float>::lowest();
   for (std::size_t i = 0; i < x.extent(0); i++) {
       if (x[i] > max) {

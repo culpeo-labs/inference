@@ -1,6 +1,7 @@
 set(PUBLIC_HEADERS
     include/util/mdarray.h
     include/util/scope_guard.h
+    include/util/timers.h
     include/util/types.h
 )
 

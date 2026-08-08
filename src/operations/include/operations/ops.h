@@ -10,15 +10,16 @@
 #include <stdint.h>
 #include <source_location>
 #include <immintrin.h>
+#include <xmmintrin.h>
 
-#include <type_traits>
 #include <util/timers.h>
 #include <util/types.h>
-#include <xmmintrin.h>
 
 namespace culpeo::inference::operations {
     void embed(util::mat_t<float, 1> out, util::float_matrix auto table, std::ptrdiff_t token_id)
     {
+        static util::function_timer timer{ std::source_location::current() };
+        auto _ = timer.probe();
         assert(token_id >= 0 && static_cast<std::size_t>(token_id) < table.extent(0));
         assert(out.extent(0) == table.extent(1));
         for(std::size_t i{ 0 }; i < out.extent(0); ++i) out[i] = table[token_id, i];
@@ -26,6 +27,8 @@ namespace culpeo::inference::operations {
 
     void rmsnorm(util::mat_t<float, 1> out, util::float_vector auto x, util::float_vector auto weight, float eps)
     {
+        static util::function_timer timer{ std::source_location::current() };
+        auto _ = timer.probe();
         assert(out.extent(0) == x.extent(0));
         assert(out.extent(0) == weight.extent(0));
         double sigma{ 0 };
@@ -77,6 +80,8 @@ namespace culpeo::inference::operations {
 
     void matvec(util::mat_t<float, 1> out, util::float_matrix auto W, util::float_vector auto x)
     {
+        static util::function_timer timer{ std::source_location::current() };
+        auto _ = timer.probe();
         assert(out.extent(0) == W.extent(0));
         assert(x.extent(0) == W.extent(1));
         assert(W.stride(0) == W.extent(1));
@@ -119,6 +124,8 @@ namespace culpeo::inference::operations {
 
     void add(util::mat_t<float, 1> out, util::float_vector auto a, util::float_vector auto b)
     {
+        static util::function_timer timer{ std::source_location::current() };
+        auto _ = timer.probe();
         assert(out.extent(0) == a.extent(0));
         assert(out.extent(0) == b.extent(0));
         for (auto i{ 0ull }; i < out.extent(0); i++)
@@ -129,6 +136,8 @@ namespace culpeo::inference::operations {
 
     void silu_mul(util::mat_t<float, 1> out, util::float_vector auto gate, util::float_vector auto up)
     {
+        static util::function_timer timer{ std::source_location::current() };
+        auto _ = timer.probe();
         assert(out.extent(0) == gate.extent(0));
         assert(out.extent(0) == up.extent(0));
         for (auto i{ 0ull }; i < out.extent(0); i++)
@@ -141,6 +150,8 @@ namespace culpeo::inference::operations {
 
     std::size_t argmax(util::float_vector auto x)
     {
+        static util::function_timer timer{ std::source_location::current() };
+        auto _ = timer.probe();
         float max{ std::numeric_limits<float>::min() };
         std::size_t index{ 0 };
         for (auto i{ 0ull }; i < x.extent(0); i++)
