@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -12,6 +13,7 @@
 #include <immintrin.h>
 #include <xmmintrin.h>
 
+#include <util/mdarray.h>
 #include <util/timers.h>
 #include <util/types.h>
 
@@ -78,6 +80,17 @@ namespace culpeo::inference::operations {
         }
     }
 
+
+    template<size_t N, typename F>
+    constexpr void unroll(F&& f)
+    {
+        [&]<std::size_t... Is>(std::index_sequence<Is...>)
+        {
+            (f(std::integral_constant<std::size_t, Is>{}) ,...);
+        }(std::make_index_sequence<N>{});
+    }
+
+
     void matvec(util::mat_t<float, 1> out, util::float_matrix auto W, util::float_vector auto x)
     {
         static util::function_timer timer{ std::source_location::current() };
@@ -87,34 +100,38 @@ namespace culpeo::inference::operations {
         assert(W.stride(0) == W.extent(1));
         for (std::size_t r = 0; r < W.extent(0); r++)
         {
-            auto acc0 = _mm256_setzero_ps(),
-                 acc1 = _mm256_setzero_ps(),
-                 acc2 = _mm256_setzero_ps(),
-                 acc3 = _mm256_setzero_ps();
+            auto w_row = util::get_row(W, r);
+            std::array<__m256, 4> accs;
+            unroll<4>([&](auto i)
+            {
+                accs[i] = _mm256_setzero_ps();
+            });
 
-            for (auto c : std::ranges::views::iota(std::size_t{0}, W.extent(1) - W.extent(1) % 32) | std::ranges::views::stride(32))
+            const auto end = w_row.extent(0) - w_row.extent(0) % 32;
+
+            for (auto c : std::views::iota(std::size_t{0 }, end) | std::views::stride(32))
             {
-                std::ptrdiff_t offset = r * W.extent(1) + c;
-                acc0 = _mm256_fmadd_ps(load(W.data_handle() + offset), load(x.data_handle() + c), acc0);
-                acc1 = _mm256_fmadd_ps(load(W.data_handle() + offset + 8), load(x.data_handle() + c + 8), acc1);
-                acc2 = _mm256_fmadd_ps(load(W.data_handle() + offset + 16), load(x.data_handle() + c + 16), acc2);
-                acc3 = _mm256_fmadd_ps(load(W.data_handle() + offset + 24), load(x.data_handle() + c + 24), acc3);
+                unroll<4>([&](auto i)
+                {
+                    accs[i] = _mm256_fmadd_ps(load(
+                        w_row.data_handle() + c + i * 8
+                    ), load(x.data_handle() + c + i * 8), accs[i]);
+                });
             }
-            for (auto c : std::ranges::views::iota(W.extent(1) - W.extent(1) % 32, W.extent(1) - W.extent(1) % 8) | std::ranges::views::stride(8))
+
+            accs[0] = _mm256_add_ps(accs[0], accs[1]);
+            accs[2] = _mm256_add_ps(accs[2], accs[3]);
+            accs[0] = _mm256_add_ps(accs[0], accs[2]);
+            auto total = horizontal(accs[0]);
+            if ((w_row.extent(0) % 32) > 0)
             {
-                std::ptrdiff_t offset = r * W.extent(1) + c;
-                acc0 = _mm256_fmadd_ps(load(W.data_handle() + offset), load(x.data_handle() +c), acc0);
+                for (auto c : std::views::iota(end, w_row.extent(0)))
+                {
+                    total += w_row[c] * x[c];
+                }
             }
-            acc0 = _mm256_add_ps(acc0, acc1);
-            acc2 = _mm256_add_ps(acc2, acc3);
-            acc0 = _mm256_add_ps(acc0, acc2);
-            float tail{ 0 };
-            for (std::size_t c = W.extent(1) - W.extent(1) % 8; c < W.extent(1); c++)
-            {
-                tail += W[r, c] * x[c];
-            }
-            /* Horizontal sum */
-            out[r] = tail + horizontal(acc0);
+
+            out[r] = total;
         }
     }
 
