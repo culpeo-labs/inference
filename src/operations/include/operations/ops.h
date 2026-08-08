@@ -16,6 +16,7 @@
 #include <util/mdarray.h>
 #include <util/timers.h>
 #include <util/types.h>
+#include <util/unroll.h>
 
 namespace culpeo::inference::operations {
     void embed(util::mat_t<float, 1> out, util::float_matrix auto table, std::ptrdiff_t token_id)
@@ -80,17 +81,6 @@ namespace culpeo::inference::operations {
         }
     }
 
-
-    template<size_t N, typename F>
-    constexpr void unroll(F&& f)
-    {
-        [&]<std::size_t... Is>(std::index_sequence<Is...>)
-        {
-            (f(std::integral_constant<std::size_t, Is>{}) ,...);
-        }(std::make_index_sequence<N>{});
-    }
-
-
     void matvec(util::mat_t<float, 1> out, util::float_matrix auto W, util::float_vector auto x)
     {
         static util::function_timer timer{ std::source_location::current() };
@@ -102,7 +92,7 @@ namespace culpeo::inference::operations {
         {
             auto w_row = util::get_row(W, r);
             std::array<__m256, 4> accs;
-            unroll<4>([&](auto i)
+            util::unroll<4>([&](auto i)
             {
                 accs[i] = _mm256_setzero_ps();
             });
@@ -111,7 +101,7 @@ namespace culpeo::inference::operations {
 
             for (auto c : std::views::iota(std::size_t{0 }, end) | std::views::stride(32))
             {
-                unroll<4>([&](auto i)
+                util::unroll<4>([&](auto i)
                 {
                     accs[i] = _mm256_fmadd_ps(load(
                         w_row.data_handle() + c + i * 8
