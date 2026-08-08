@@ -2,11 +2,19 @@
 
 #include <cassert>
 #include <cmath>
+#include <cstring>
 #include <cstddef>
 #include <limits>
+#include <pmmintrin.h>
+#include <ranges>
 #include <stdint.h>
+#include <source_location>
+#include <immintrin.h>
 
+#include <type_traits>
+#include <util/timers.h>
 #include <util/types.h>
+#include <xmmintrin.h>
 
 namespace culpeo::inference::operations {
     void embed(util::mat_t<float, 1> out, util::float_matrix auto table, std::ptrdiff_t token_id)
@@ -32,6 +40,41 @@ namespace culpeo::inference::operations {
         }
     }
 
+    inline float horizontal(const __m256 val)
+    {
+        /* lower: val[0:127] (f1, f2, f3, f4), cast (free) */
+        auto lower = _mm256_castps256_ps128(val);
+        /* upper: val[128, 255] (f5, f6, f7, f8), extract (instruction) */
+        auto upper = _mm256_extractf128_ps(val, 1);
+        /* lower: (f1 + f5, f2 + f6, f3 + f7, f4 + f8)*/
+        lower = _mm_add_ps(lower, upper);
+        /* hadd(a, b) -> (a1 + a2, a3 + a4, b1 + b2, b3 + b4) */
+        /* lower: (l1 + l2, l3 + l4, _, _)*/
+        lower = _mm_hadd_ps(lower, lower);
+        /* lower: (l1 + l2 + l3 + l3, _, _, _) */
+        lower = _mm_hadd_ps(lower, lower);
+        return _mm_cvtss_f32(lower);
+    }
+
+    template<typename T>
+    inline __m256 load(const T * ptr)
+    {
+        if constexpr (sizeof(T) == 2)
+        {
+            /* T == int16_t (bfloat16) */
+            __m128i i128 = _mm_loadu_si128(reinterpret_cast<const __m128i *>(ptr));
+            auto i256 = _mm256_cvtepu16_epi32(i128);
+            /* shift, bf16 -> f32 */
+            i256 = _mm256_slli_epi32(i256, 16);
+            return _mm256_castsi256_ps(i256);
+        }
+        else
+        {
+            /* T == float */
+            return _mm256_loadu_ps(ptr);
+        }
+    }
+
     void matvec(util::mat_t<float, 1> out, util::float_matrix auto W, util::float_vector auto x)
     {
         assert(out.extent(0) == W.extent(0));
@@ -39,12 +82,34 @@ namespace culpeo::inference::operations {
         assert(W.stride(0) == W.extent(1));
         for (std::size_t r = 0; r < W.extent(0); r++)
         {
-            float acc{ 0 };
-            for (std::size_t c = 0; c < W.extent(1); c++)
+            auto acc0 = _mm256_setzero_ps(),
+                 acc1 = _mm256_setzero_ps(),
+                 acc2 = _mm256_setzero_ps(),
+                 acc3 = _mm256_setzero_ps();
+
+            for (auto c : std::ranges::views::iota(std::size_t{0}, W.extent(1) - W.extent(1) % 32) | std::ranges::views::stride(32))
             {
-                acc += W[r, c] * x[c];
+                std::ptrdiff_t offset = r * W.extent(1) + c;
+                acc0 = _mm256_fmadd_ps(load(W.data_handle() + offset), load(x.data_handle() + c), acc0);
+                acc1 = _mm256_fmadd_ps(load(W.data_handle() + offset + 8), load(x.data_handle() + c + 8), acc1);
+                acc2 = _mm256_fmadd_ps(load(W.data_handle() + offset + 16), load(x.data_handle() + c + 16), acc2);
+                acc3 = _mm256_fmadd_ps(load(W.data_handle() + offset + 24), load(x.data_handle() + c + 24), acc3);
             }
-            out[r] = acc;
+            for (auto c : std::ranges::views::iota(W.extent(1) - W.extent(1) % 32, W.extent(1) - W.extent(1) % 8) | std::ranges::views::stride(8))
+            {
+                std::ptrdiff_t offset = r * W.extent(1) + c;
+                acc0 = _mm256_fmadd_ps(load(W.data_handle() + offset), load(x.data_handle() +c), acc0);
+            }
+            acc0 = _mm256_add_ps(acc0, acc1);
+            acc2 = _mm256_add_ps(acc2, acc3);
+            acc0 = _mm256_add_ps(acc0, acc2);
+            float tail{ 0 };
+            for (std::size_t c = W.extent(1) - W.extent(1) % 8; c < W.extent(1); c++)
+            {
+                tail += W[r, c] * x[c];
+            }
+            /* Horizontal sum */
+            out[r] = tail + horizontal(acc0);
         }
     }
 

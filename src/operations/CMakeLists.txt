@@ -8,6 +8,7 @@ set(PUBLIC_HEADERS
 add_library(operations ${SOURCES} ${PUBLIC_HEADER})
 target_include_directories(operations PUBLIC include)
 target_link_libraries(operations PUBLIC util)
+target_compile_options(operations PUBLIC -mavx2 -mfma)
 target_compile_options(operations PRIVATE -Wall -Wextra)
 
 
