@@ -13,6 +13,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 option(ENABLE_SANITIZERS "Enable AddressSanitizer+UndefinedBehaviorSanitizer for project targets" OFF)
 option(ENABLE_TIMERS "Enable timers for project targets" OFF)
+option(USE_SIMD "Use SIMD for the kernel implementation" ON)
 
 set(INFERENCE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" CACHE PATH
     "Directory where built executables are placed")
@@ -39,6 +40,10 @@ FetchContent_MakeAvailable(Catch2)
 
 if(ENABLE_TIMERS)
   add_compile_definitions(ENABLE_TIMERS=1)
+endif()
+
+if(USE_SIMD)
+  add_compile_definitions(USE_SIMD=1)
 endif()
 
 if(ENABLE_SANITIZERS AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
