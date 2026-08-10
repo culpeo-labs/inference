@@ -12,7 +12,7 @@ namespace culpeo::inference::util
     class mdarray
     {
     public:
-        using mat_t = typename matrix<D>::template type<Rank>;
+        using mat_t = typename matrix<D>::template mut<Rank>;
         using element_type = typename mat_t::element_type;
 
         template<typename... Ts>
@@ -30,16 +30,21 @@ namespace culpeo::inference::util
         mat_t mdspan() { return m_span; }
 
         template<std::size_t ViewRank, typename... Ts>
-        typename matrix<D>::template type<ViewRank> view(Ts... extents)
+        typename matrix<D>::template mut<ViewRank> view(Ts... extents)
         {
             static_assert(sizeof...(Ts) == ViewRank);
             const auto view_size = (1 * ... * extents);
             assert(view_size == m_size);
-            return (typename matrix<D>::template type<ViewRank>){ m_data.get(), extents...};
+            return (typename matrix<D>::template mut<ViewRank>){ m_data.get(), extents...};
 
         }
 
-        auto operator[](std::ptrdiff_t i)
+        auto& operator[](std::ptrdiff_t i) &
+        {
+            return m_span[i];
+        }
+
+        auto operator[](std::ptrdiff_t i) const
         {
             return m_span[i];
         }
@@ -50,7 +55,6 @@ namespace culpeo::inference::util
         std::unique_ptr<element_type[]> m_data;
         mat_t m_span;
     };
-
 
     template<typename ElementType, typename Extents, typename AccessorPolicy>
     auto get_row(std::mdspan<ElementType, Extents, std::layout_right, AccessorPolicy> mat, std::size_t row)

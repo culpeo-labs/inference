@@ -15,9 +15,9 @@ namespace culpeo::inference::model
         tensor(std::shared_ptr<const void> data, std::size_t original_offset, std::size_t size, util::data_type dtype, std::vector<std::size_t> shape);
 
         template<util::data_type dtype>
-        std::expected<typename util::matrix<dtype>::template const_type<2>, std::string> as_mat() const
+        std::expected<typename util::matrix<dtype>::template view<2>, std::string> as_mat() const
         {
-            using mat_t = typename util::matrix<dtype>::template const_type<2>;
+            using mat_t = typename util::matrix<dtype>::template view<2>;
             if (dtype != m_dtype)
             {
                 return std::unexpected{ "Request type does not match tensor type." };
@@ -40,9 +40,9 @@ namespace culpeo::inference::model
         }
 
         template<util::data_type dtype>
-        std::expected<typename util::matrix<dtype>::template const_type<1>, std::string> as_vec() const
+        std::expected<typename util::matrix<dtype>::template view<1>, std::string> as_vec() const
         {
-            using vec_t = typename util::matrix<dtype>::template const_type<1>;
+            using vec_t = typename util::matrix<dtype>::template view<1>;
             if (dtype != m_dtype)
             {
                 return std::unexpected{ "Request type does not match tensor type." };
