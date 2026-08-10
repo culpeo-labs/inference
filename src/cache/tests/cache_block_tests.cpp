@@ -53,7 +53,7 @@ namespace
     template<data_type D>
     auto make_vec(std::vector<typename codec<D>::storage>& backing)
     {
-        using vt = typename util::matrix<D>::template type<1>;
+        using vt = typename util::matrix<D>::template mut<1>;
         return vt{ backing.data(), backing.size() };
     }
 

@@ -2,20 +2,61 @@
 // Reference: numpy, HuggingFace Llama conventions. Seed 0xC01D.
 #pragma once
 #include <array>
+#include <mdspan>
 namespace golden {
-inline constexpr std::array<float, 8> RMSNORM_X { 1.66745065f, 0.73030217f, -0.769698868f, 0.390750947f, 0.157333162f, -0.447307058f, 0.582233118f, -0.607559337f };
-inline constexpr std::array<float, 8> RMSNORM_W { 0.85582692f, -0.633770711f, 1.21408712f, -1.2574726f, -1.57997329f, 0.148687127f, -0.0842074531f, 0.543157032f };
-inline constexpr std::array<float, 8> RMSNORM_OUT { 1.80655477f, -0.585931649f, -1.18299497f, -0.622029199f, -0.314689473f, -0.0841959731f, -0.0620668405f, -0.417759473f };
+namespace {
+    std::array<float, 8> _RMSNORM_X { 1.66745065f,0.73030217f,-0.769698868f,0.390750947f,0.157333162f,-0.447307058f,0.582233118f,-0.607559337f};
+}
+inline constexpr std::mdspan<float, std::dextents<std::size_t, 1>> RMSNORM_X { _RMSNORM_X.data(), 8 };
+
+namespace {
+    std::array<float, 8> _RMSNORM_W { 0.85582692f,-0.633770711f,1.21408712f,-1.2574726f,-1.57997329f,0.148687127f,-0.0842074531f,0.543157032f};
+}
+inline constexpr std::mdspan<float, std::dextents<std::size_t, 1>> RMSNORM_W { _RMSNORM_W.data(), 8 };
+
+namespace {
+    std::array<float, 8> _RMSNORM_OUT { 1.80655477f,-0.585931649f,-1.18299497f,-0.622029199f,-0.314689473f,-0.0841959731f,-0.0620668405f,-0.417759473f};
+}
+inline constexpr std::mdspan<float, std::dextents<std::size_t, 1>> RMSNORM_OUT { _RMSNORM_OUT.data(), 8 };
+
 inline constexpr int RMSNORM_DIM = 8;
-inline constexpr std::array<float, 12> MATVEC_W { 0.724970944f, 0.679341143f, 1.3753734f, -0.55627619f, 0.425648737f, 1.62273377f, 0.0806753384f, 0.36965342f, 0.533735698f, -0.292738128f, 1.08862153f, 1.06196388f };
-inline constexpr std::array<float, 4> MATVEC_X { -0.375121038f, -0.322442417f, -1.10901788f, 0.284926661f };
-inline constexpr std::array<float, 3> MATVEC_OUT { -2.17481187f, -0.667054275f, -1.01054323f };
+namespace {
+    std::array<float, 12> _MATVEC_W { 0.724970944f,0.679341143f,1.3753734f,-0.55627619f,0.425648737f,1.62273377f,0.0806753384f,0.36965342f,0.533735698f,-0.292738128f,1.08862153f,1.06196388f};
+}
+inline constexpr std::mdspan<float, std::dextents<std::size_t, 2>> MATVEC_W { _MATVEC_W.data(), 3, 4 };
+
+namespace {
+    std::array<float, 4> _MATVEC_X { -0.375121038f,-0.322442417f,-1.10901788f,0.284926661f};
+}
+inline constexpr std::mdspan<float, std::dextents<std::size_t, 1>> MATVEC_X { _MATVEC_X.data(), 4 };
+
+namespace {
+    std::array<float, 3> _MATVEC_OUT { -2.17481187f,-0.667054275f,-1.01054323f};
+}
+inline constexpr std::mdspan<float, std::dextents<std::size_t, 1>> MATVEC_OUT { _MATVEC_OUT.data(), 3 };
+
 inline constexpr int MATVEC_ROWS = 3;
 inline constexpr int MATVEC_COLS = 4;
-inline constexpr std::array<float, 16> ROPE_Q_IN { 0.191940982f, -1.10225185f, 1.80131934f, -1.64074252f, 0.594526236f, -0.743331109f, 1.32037273f, 0.97120841f, -0.288464246f, -0.00603998344f, 0.86348018f, -0.435272063f, -0.125750674f, -1.77272441f, -0.582441039f, -0.813221906f };
-inline constexpr std::array<float, 8> ROPE_K_IN { -2.09936604f, 0.184296834f, -0.00502609292f, 0.369038733f, -1.50807162f, -0.335677277f, -1.32742124f, -0.603623586f };
-inline constexpr std::array<float, 16> ROPE_Q_OUT { 0.624552038f, -0.610945089f, 1.73307702f, -1.64557804f, -0.0154122561f, -1.18078211f, 1.40875105f, 0.962992592f, -0.202411772f, 0.844588769f, 0.891510974f, -0.43120053f, 0.240944657f, -1.55860775f, -0.538557117f, -0.815388092f };
-inline constexpr std::array<float, 8> ROPE_K_OUT { -2.04163725f, 0.322667947f, 0.0613235991f, 0.372052226f, 1.58535017f, -0.206227916f, -1.32601351f, -0.601770855f };
+namespace {
+    std::array<float, 16> _ROPE_Q_IN { 0.191940982f,-1.10225185f,1.80131934f,-1.64074252f,0.594526236f,-0.743331109f,1.32037273f,0.97120841f,-0.288464246f,-0.00603998344f,0.86348018f,-0.435272063f,-0.125750674f,-1.77272441f,-0.582441039f,-0.813221906f};
+}
+inline constexpr std::mdspan<float, std::dextents<std::size_t, 2>> ROPE_Q_IN { _ROPE_Q_IN.data(), 2, 8 };
+
+namespace {
+    std::array<float, 8> _ROPE_K_IN { -2.09936604f,0.184296834f,-0.00502609292f,0.369038733f,-1.50807162f,-0.335677277f,-1.32742124f,-0.603623586f};
+}
+inline constexpr std::mdspan<float, std::dextents<std::size_t, 2>> ROPE_K_IN { _ROPE_K_IN.data(), 1, 8 };
+
+namespace {
+    std::array<float, 16> _ROPE_Q_OUT { 0.624552038f,-0.610945089f,1.73307702f,-1.64557804f,-0.0154122561f,-1.18078211f,1.40875105f,0.962992592f,-0.202411772f,0.844588769f,0.891510974f,-0.43120053f,0.240944657f,-1.55860775f,-0.538557117f,-0.815388092f};
+}
+inline constexpr std::mdspan<float, std::dextents<std::size_t, 2>> ROPE_Q_OUT { _ROPE_Q_OUT.data(), 2, 8 };
+
+namespace {
+    std::array<float, 8> _ROPE_K_OUT { -2.04163725f,0.322667947f,0.0613235991f,0.372052226f,1.58535017f,-0.206227916f,-1.32601351f,-0.601770855f};
+}
+inline constexpr std::mdspan<float, std::dextents<std::size_t, 2>> ROPE_K_OUT { _ROPE_K_OUT.data(), 1, 8 };
+
 inline constexpr int ROPE_HEAD_DIM = 8;
 inline constexpr int ROPE_POS = 5;
 inline constexpr int ROPE_NQ = 2;

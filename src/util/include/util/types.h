@@ -5,15 +5,12 @@
 #include <concepts>
 #include <cstdint>
 #include <mdspan>
-#include <span>
 #include <type_traits>
 
-namespace culpeo::inference::util {
+#include <util/traits.h>
 
-    template<typename T, bool C>
-        requires(!std::is_pointer_v<T>)
-    using conditionally_const_t = std::conditional_t<C, std::add_const_t<T>, T>;
-
+namespace culpeo::inference::util
+{
     enum class data_type
     {
         BF16,
@@ -28,26 +25,31 @@ namespace culpeo::inference::util {
         BOOL,
     };
 
-    template<typename M>
-    concept float_matrix = (M::rank() == 2 && std::convertible_to<typename M::reference, float>);
+    namespace details
+    {
+        template<data_type D>
+        struct data_type_storage_type;
+
+        template<> struct data_type_storage_type<data_type::BF16>: std::type_identity<std::uint16_t> {};
+        template<> struct data_type_storage_type<data_type::F64>: std::type_identity<double> {};
+        template<> struct data_type_storage_type<data_type::F32>: std::type_identity<float> {};
+        template<> struct data_type_storage_type<data_type::F16>: std::type_identity<std::uint16_t> {};
+        template<> struct data_type_storage_type<data_type::I64>: std::type_identity<std::int64_t> {};
+        template<> struct data_type_storage_type<data_type::I32>: std::type_identity<std::int32_t> {};
+        template<> struct data_type_storage_type<data_type::I16>: std::type_identity<std::int16_t> {};
+        template<> struct data_type_storage_type<data_type::I8>: std::type_identity<std::int8_t> {};
+        template<> struct data_type_storage_type<data_type::U8>: std::type_identity<std::uint8_t> {};
+        template<> struct data_type_storage_type<data_type::BOOL>: std::type_identity<std::uint8_t> {};
+    }
 
     template<typename M>
-    concept float_vector = (M::rank() == 1 && std::convertible_to<typename M::reference, float>);
+    concept float_matrix = is_mdspan_v<M> && (M::rank() == 2 && std::convertible_to<typename M::reference, float>);
+
+    template<typename M>
+    concept float_vector = is_mdspan_v<M> && (M::rank() == 1 && std::convertible_to<typename M::reference, float>);
 
     template<typename T, size_t Rank, typename AccessorPolicy = std::default_accessor<T>>
     using mat_t = std::mdspan<T, std::dextents<std::size_t, Rank>, std::layout_right, AccessorPolicy>;
-
-    template<typename T, size_t Rank, typename AccessorPolicy = std::default_accessor<const T>>
-    using cmat_t = mat_t<const T, Rank, AccessorPolicy>;
-
-    template<typename T>
-        requires(std::floating_point<T>)
-    using vec_t = std::span<T>;
-
-    template<typename T>
-        requires(std::floating_point<T>)
-    using cvec_t = vec_t<const T>;
-
 
     template<data_type D>
     struct matrix
@@ -55,22 +57,25 @@ namespace culpeo::inference::util {
         static_assert(std::false_type::value, "matrix<D> is not specialized for this data_type");
     };
 
-    template<>
-    struct matrix<data_type::F32>
+    template<data_type D>
+        requires (
+            D == data_type::F64 ||
+            D == data_type::F32 ||
+            D == data_type::I8 ||
+            D == data_type::U8 ||
+            D == data_type::I16 ||
+            D == data_type::I32 ||
+            D == data_type::I64)
+    struct matrix<D>
     {
-        template<std::size_t Rank>
-        using type = mat_t<float, Rank>;
-        template<std::size_t Rank>
-        using const_type = cmat_t<float, Rank>;
-    };
+        template<std::size_t Rank, bool Const>
+        using type = mat_t<conditionally_const_t<typename details::data_type_storage_type<D>::type, Const>, Rank>;
 
-    template<>
-    struct matrix<data_type::F64>
-    {
         template<std::size_t Rank>
-        using type = mat_t<double, Rank>;
+        using view= type<Rank, true>;
+
         template<std::size_t Rank>
-        using const_type = cmat_t<double, Rank>;
+        using mut= type<Rank, false>;
     };
 
     template<>
@@ -120,10 +125,14 @@ namespace culpeo::inference::util {
                 return p + i;
             }
         };
+        template<std::size_t Rank, bool Const>
+        using type = mat_t<conditionally_const_t<std::uint16_t, Const>, Rank, accessor_policy<Const>>;
+
         template<std::size_t Rank>
-        using type = mat_t<std::uint16_t, Rank, accessor_policy<>>;
+        using view= type<Rank, true>;
+
         template<std::size_t Rank>
-        using const_type = cmat_t<std::uint16_t, Rank, accessor_policy<true>>;
+        using mut= type<Rank, false>;
     };
 
     template<>
@@ -149,10 +158,14 @@ namespace culpeo::inference::util {
             }
         };
 
+        template<std::size_t Rank, bool Const>
+        using type = mat_t<conditionally_const_t<std::uint16_t, Const>, Rank, accessor_policy<Const>>;
+
         template<std::size_t Rank>
-        using type = mat_t<std::uint16_t, Rank, accessor_policy<>>;
+        using view= type<Rank, true>;
+
         template<std::size_t Rank>
-        using const_type = cmat_t<std::uint16_t, Rank,  accessor_policy<true>>;
+        using mut= type<Rank, false>;
     };
 
     template<>
@@ -177,54 +190,56 @@ namespace culpeo::inference::util {
             }
         };
 
+        template<std::size_t Rank, bool Const>
+        using type = mat_t<conditionally_const_t<std::uint8_t, Const>, Rank, accessor_policy<Const>>;
+
         template<std::size_t Rank>
-        using type = mat_t<std::uint8_t, Rank, accessor_policy<>>;
+        using view= type<Rank, true>;
+
         template<std::size_t Rank>
-        using const_type = cmat_t<std::uint8_t, Rank, accessor_policy<true>>;
+        using mut= type<Rank, false>;
     };
 
-    template<>
-    struct matrix<data_type::I8>
-    {
-        template<std::size_t Rank>
-        using type = mat_t<std::int8_t, Rank>;
-        template<std::size_t Rank>
-        using const_type = cmat_t<std::int8_t, Rank>;
-    };
+    template<typename T>
+    concept bool_matrix = mdspan_of<T, std::uint8_t> &&
+    (
+        std::same_as<typename T::accessor_type, matrix<data_type::BOOL>::accessor_policy<true>> ||
+        std::same_as<typename T::accessor_type, matrix<data_type::BOOL>::accessor_policy<false>>
+    );
 
-    template<>
-    struct matrix<data_type::U8>
-    {
-        template<std::size_t Rank>
-        using type = mat_t<std::uint8_t, Rank>;
-        template<std::size_t Rank>
-        using const_type = cmat_t<std::uint8_t, Rank>;
-    };
 
-    template<>
-    struct matrix<data_type::I16>
-    {
-        template<std::size_t Rank>
-        using type = mat_t<std::int16_t, Rank>;
-        template<std::size_t Rank>
-        using const_type = cmat_t<std::int16_t, Rank>;
-    };
+    template<typename T>
+    concept f16_matrix = mdspan_of<T, std::uint16_t> &&
+    (
+        std::same_as<typename T::accessor_type, matrix<data_type::F16>::accessor_policy<true>> ||
+        std::same_as<typename T::accessor_type, matrix<data_type::F16>::accessor_policy<false>>
+    );
 
-    template<>
-    struct matrix<data_type::I32>
-    {
-        template<std::size_t Rank>
-        using type = mat_t<std::int32_t, Rank>;
-        template<std::size_t Rank>
-        using const_type = cmat_t<std::int32_t, Rank>;
-    };
+    template<typename T>
+    concept bf16_matrix = mdspan_of<T, std::uint16_t> &&
+    (
+        std::same_as<typename T::accessor_type, matrix<data_type::BF16>::accessor_policy<true>> ||
+        std::same_as<typename T::accessor_type, matrix<data_type::BF16>::accessor_policy<false>>
+    );
 
-    template<>
-    struct matrix<data_type::I64>
-    {
-        template<std::size_t Rank>
-        using type = mat_t<std::int64_t, Rank>;
-        template<std::size_t Rank>
-        using const_type = cmat_t<std::int64_t, Rank>;
-    };
+    template<typename T>
+    concept f32_matrix = mdspan_of<T, float>;
+
+    template<typename T>
+    concept f64_matrix = mdspan_of<T, double>;
+
+    template<typename T>
+    concept i8_matrix = mdspan_of<T, std::int8_t>;
+
+    template<typename T>
+    concept u8_matrix = mdspan_of<T, std::uint8_t> && !bool_matrix<T>;
+
+    template<typename T>
+    concept i16_matrix = mdspan_of<T, std::int16_t>;
+
+    template<typename T>
+    concept i32_matrix = mdspan_of<T, std::int32_t>;
+
+    template<typename T>
+    concept i64_matrix = mdspan_of<T, std::int64_t>;
 }

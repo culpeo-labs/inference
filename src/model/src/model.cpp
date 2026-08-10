@@ -41,7 +41,7 @@ struct tensor_names<model::model_family::llama>
 };
 
 template<size_t Rank>
-std::expected<util::matrix<util::data_type::BF16>::const_type<Rank>, std::string> load_tensor(const model::safetensors & safetensors, const std::string_view name, const std::array<std::size_t, Rank> dimensions)
+std::expected<util::matrix<util::data_type::BF16>::view<Rank>, std::string> load_tensor(const model::safetensors & safetensors, const std::string_view name, const std::array<std::size_t, Rank> dimensions)
 {
     auto tensor = safetensors.get_tensor(name);
     if (!tensor)

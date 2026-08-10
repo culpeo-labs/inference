@@ -13,8 +13,8 @@ namespace culpeo::inference::cache {
     class cache_block
     {
     public:
-        using vector_type = typename util::matrix<D>::template type<1>;
-        using cmatrix_type = typename util::matrix<D>::template const_type<2>;
+        using vector_type = typename util::matrix<D>::template mut<1>;
+        using cmatrix_type = typename util::matrix<D>::template view<2>;
 
         explicit cache_block(std::size_t max_sequence_length, std::size_t heads, std::size_t dims):
             m_heads{ heads },

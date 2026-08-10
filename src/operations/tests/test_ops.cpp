@@ -25,15 +25,16 @@ static void check_close(const std::array<float, N> got, const std::array<float, 
   }
 }
 
-template<size_t N, std::size_t Rank>
-static void check_close(util::mdarray<util::data_type::F32, Rank> & got, const std::array<float, N> want,
+template<std::size_t Rank>
+static void check_close(util::mdarray<util::data_type::F32, Rank> & got, const std::mdspan<float, std::dextents<std::size_t, Rank>> want,
                         float abs_tol = 1e-5f, float rel_tol = 1e-4f) {
-  assert(got.size() == N);
+  assert(got.size() == want.size());
   auto vec = got.template view<1>(got.size());
-  for (int i = 0; i < N; ++i) {
-    INFO("index " << i << ": got " << vec[i] << ", want " << want[i]);
-    CHECK(std::abs(vec[i] - want[i]) <=
-          abs_tol + rel_tol * std::abs(want[i]));
+  std::mdspan<float, std::dextents<std::size_t, 1>> want_vec{ want.data_handle(), want.size() };
+  for (int i = 0; i < got.size(); ++i) {
+    INFO("index " << i << ": got " << vec[i] << ", want " << want_vec[i]);
+    CHECK(std::abs(vec[i] - want_vec[i]) <=
+          abs_tol + rel_tol * std::abs(want_vec[i]));
   }
 }
 
@@ -66,22 +67,24 @@ TEST_CASE("embed: row 0 and last row (fencepost)") {
 
 // ------------------------------------------------------------- rmsnorm
 TEST_CASE("rmsnorm: golden vector") {
-  std::array<float, golden::RMSNORM_DIM> out{};
+  util::mdarray<util::data_type::F32, 1> out{ golden::RMSNORM_DIM };
+
   operations::rmsnorm(
-    as_mat(out.data(), golden::RMSNORM_DIM),
-    as_mat(golden::RMSNORM_X.data(), golden::RMSNORM_DIM),
-    as_mat(golden::RMSNORM_W.data(), golden::RMSNORM_DIM),
+    out.mdspan(),
+    golden::RMSNORM_X,
+    golden::RMSNORM_W,
     1e-5f);
   check_close(out, golden::RMSNORM_OUT);
 }
 
 TEST_CASE("rmsnorm: in-place aliasing (out == x) per contract") {
-  std::array<float, golden::RMSNORM_DIM> x{};
+  util::mdarray<util::data_type::F32, 1> x{ golden::RMSNORM_DIM };
+
   for (int i = 0; i < golden::RMSNORM_DIM; ++i) x[i] = golden::RMSNORM_X[i];
   operations::rmsnorm(
-    as_mat(x.data(), golden::RMSNORM_DIM),
-    as_mat(x.data(), golden::RMSNORM_DIM),
-    as_mat(golden::RMSNORM_W.data(), golden::RMSNORM_DIM),
+    x.mdspan(),
+    x.mdspan(),
+    golden::RMSNORM_W,
     1e-5f);
   check_close(x, golden::RMSNORM_OUT);
 }
@@ -90,12 +93,12 @@ TEST_CASE("rmsnorm: unit weights on a constant vector are ~identity") {
   // x = c everywhere → rms = sqrt(c² + eps) ≈ |c|; out ≈ sign-preserved 1·c/|c|·...
   // Simplest invariant: with w=1 and c=2, every output ≈ 2/2 = 1... times c.
   const int d = 16;
-  float x[d], w[d], out[d];
+  util::mdarray<util::data_type::F32, 1> x{ d }, w{ d }, out{ d };
   for (int i = 0; i < d; ++i) { x[i] = 2.0f; w[i] = 1.0f; }
   operations::rmsnorm(
-    as_mat(out, d),
-    as_mat(x, d),
-    as_mat(w, d),
+    out.mdspan(),
+    x.mdspan(),
+    w.mdspan(),
     1e-5f);
   for (int i = 0; i < d; ++i) CHECK(out[i] == Catch::Approx(1.0f).epsilon(1e-4));
 }
@@ -116,23 +119,21 @@ TEST_CASE("rmsnorm: eps is inside the sqrt (all-zero input stays finite)") {
 
 // -------------------------------------------------------------- matvec
 TEST_CASE("matvec: golden vector") {
-  std::array<float, golden::MATVEC_ROWS> out{};
-  const std::mdspan<const float, std::dextents<std::size_t, 2>> W{golden::MATVEC_W.data(), golden::MATVEC_ROWS, golden::MATVEC_COLS};
+  util::mdarray<util::data_type::F32, 1> out{ golden::MATVEC_ROWS };
   operations::matvec(
-    as_mat(out.data(), golden::MATVEC_ROWS),
-    W,
-    as_mat(golden::MATVEC_X.data(), golden::MATVEC_COLS));
+    out.mdspan(),
+    golden::MATVEC_W,
+    golden::MATVEC_X);
   check_close(out, golden::MATVEC_OUT);
 }
 
 TEST_CASE("matvec: overwrites the output array") {
   util::mdarray<util::data_type::F32, 1> out{golden::MATVEC_ROWS};
-  const std::mdspan<const float, std::dextents<std::size_t, 2>> W{golden::MATVEC_W.data(), golden::MATVEC_ROWS, golden::MATVEC_COLS};
   for (int i = 0; i < golden::MATVEC_ROWS; ++i) out.mdspan()[i] = 100.0f;
   operations::matvec(
     out.mdspan(),
-    W,
-    as_mat(golden::MATVEC_X.data(), golden::MATVEC_COLS));
+    golden::MATVEC_W,
+    golden::MATVEC_X);
   check_close(out, golden::MATVEC_OUT);
 }
 
@@ -167,14 +168,14 @@ TEST_CASE("matvec: non-square catches row/col swaps") {
 
 // ---------------------------------------------------------------- rope
 TEST_CASE("rope: golden vector (HF split-half, GQA head counts)") {
-  std::array<float, golden::ROPE_NQ * golden::ROPE_HEAD_DIM> q_data{ golden::ROPE_Q_IN };
-  std::mdspan<float, std::dextents<std::size_t, 2>> q{ q_data.data(), golden::ROPE_NQ, golden::ROPE_HEAD_DIM };
-  std::array<float, golden::ROPE_NKV * golden::ROPE_HEAD_DIM> k_data{ golden::ROPE_K_IN };
-  std::mdspan<float, std::dextents<std::size_t, 2>> k{ k_data.data(), golden::ROPE_NKV, golden::ROPE_HEAD_DIM };
-  operations::rope(q, golden::ROPE_POS, golden::ROPE_BASE);
-  operations::rope(k, golden::ROPE_POS, golden::ROPE_BASE);
-  check_close(q_data, golden::ROPE_Q_OUT);
-  check_close(k_data, golden::ROPE_K_OUT);
+  util::mdarray<util::data_type::F32, 2> q{ golden::ROPE_NQ, golden::ROPE_HEAD_DIM };
+  std::memcpy(q.mdspan().data_handle(), golden::ROPE_Q_IN.data_handle(), golden::ROPE_Q_IN.size() * sizeof(float));
+  util::mdarray<util::data_type::F32, 2> k{ golden::ROPE_NKV, golden::ROPE_HEAD_DIM };
+  std::memcpy(k.mdspan().data_handle(), golden::ROPE_K_IN.data_handle(), golden::ROPE_K_IN.size() * sizeof(float));
+  operations::rope(q.mdspan(), golden::ROPE_POS, golden::ROPE_BASE);
+  operations::rope(k.mdspan(), golden::ROPE_POS, golden::ROPE_BASE);
+  check_close(q, golden::ROPE_Q_OUT);
+  check_close(k, golden::ROPE_K_OUT);
 }
 
 TEST_CASE("rope: position 0 is the identity") {
