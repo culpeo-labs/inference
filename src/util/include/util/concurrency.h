@@ -33,7 +33,7 @@ namespace culpeo::inference::util
 
         ~thread_service()
         {
-            std::lock_guard lk{ m_cv };
+            std::lock_guard lk{ m_mutex };
             m_stopped = true;
             m_cv.notify_all();
         }
@@ -63,7 +63,7 @@ namespace culpeo::inference::util
                 }
                 auto task = std::move(m_tasks.front());
                 m_tasks.pop_front();
-                lk.release();
+                lk.unlock();
                 task();
             }
         }
@@ -71,8 +71,8 @@ namespace culpeo::inference::util
         std::mutex m_mutex{};
         std::condition_variable m_cv{};
         bool m_stopped{};
-        std::vector<std::jthread> m_threads{};
         std::deque<TaskType> m_tasks{};
+        std::vector<std::jthread> m_threads{};
     };
 
     template<typename F>
@@ -82,9 +82,9 @@ namespace culpeo::inference::util
         const auto row_count = mat.extent(0);
         const auto base = (row_count + worker_count - 1) / worker_count;
         const auto chunk_size = ((base + task_alignment - 1) / task_alignment) * task_alignment;
-        const auto chunks = std::ranges::views::iota(0, mat.extent(0)) | std::ranges::views::chunk(chunk_size);
-        const auto chunk_count = std::ranges::distance(chunks);
-        std::latch done{ chunk_count };
+        const auto chunks = std::ranges::views::iota(std::size_t{0}, mat.extent(0)) | std::ranges::views::chunk(chunk_size);
+        const auto chunk_count = row_count / chunk_size + (row_count % chunk_size > 0 ? 1 :0);
+        std::latch done{ static_cast<std::ptrdiff_t>(chunk_count) };
         for (auto chunk : chunks)
         {
             service.post([chunk, &mat, &task, &done]
@@ -92,12 +92,12 @@ namespace culpeo::inference::util
                 for (auto row : chunk)
                 {
                     auto v = get_row(mat, row);
-                    task(v);
+                    task(row, v);
                 }
                 done.count_down();
             });
-            done.wait();
         }
+        done.wait();
     }
 
 }
