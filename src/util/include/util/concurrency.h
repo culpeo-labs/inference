@@ -6,12 +6,15 @@
 #include <condition_variable>
 #include <cstddef>
 #include <deque>
+#include <format>
 #include <functional>
+#include <iostream>
 #include <iterator>
 #include <latch>
 #include <mutex>
 #include <ranges>
 #include <thread>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -36,6 +39,15 @@ namespace culpeo::inference::util
             std::lock_guard lk{ m_mutex };
             m_stopped = true;
             m_cv.notify_all();
+        }
+
+        thread_service(thread_service&& other):
+            thread_service{ other.m_threads.size() }
+        {
+            std::lock_guard lk{ other.m_mutex };
+            other.m_stopped = true;;
+            m_tasks = std::move(other.m_tasks);
+            other.m_cv.notify_all();
         }
 
         void post(TaskType task)
@@ -100,4 +112,45 @@ namespace culpeo::inference::util
         done.wait();
     }
 
+    enum class execution_policy
+    {
+        secuential,
+        parallel,
+    };
+
+    template<execution_policy policy>
+    struct execution_context
+    {
+        static_assert(std::false_type::value, "Unsupported execution policy.");
+    };
+
+    template<>
+    struct execution_context<execution_policy::secuential>
+    {
+        template<typename F>
+        void row_for(float_matrix auto mat, std::size_t _, F&& fn)
+        {
+            for (std::size_t r{0}; r < mat.extent(0); r++)
+            {
+                auto row = util::get_row(mat, r);
+                fn(r, row);
+            }
+        }
+    };
+
+    template<>
+    struct execution_context<execution_policy::parallel>
+    {
+        execution_context(thread_service<std::function<void()>> service): m_service{ std::move(service) }
+        {}
+
+        template<typename F>
+        void row_for(float_matrix auto mat, std::size_t task_alignment, F&& fn)
+        {
+            parallel_row_for(m_service, mat, task_alignment, fn);
+        }
+
+
+        thread_service<std::function<void()>> m_service;
+    };
 }

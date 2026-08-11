@@ -6,10 +6,12 @@
 #include <mdspan>
 #include <vector>
 
-#include "golden.h"
-#include "util/mdarray.h"
-#include "util/types.h"
+#include <util/concurrency.h>
+#include <util/mdarray.h>
+#include <util/types.h>
 #include <operations/ops.h>
+
+#include "golden.h"
 
 using namespace culpeo::inference;
 
@@ -37,6 +39,8 @@ static void check_close(util::mdarray<util::data_type::F32, Rank> & got, const s
           abs_tol + rel_tol * std::abs(want_vec[i]));
   }
 }
+
+util::execution_context<util::execution_policy::secuential> execution_context{};
 
 template<typename T>
 util::mat_t<T, 1> as_mat(T* data, std::size_t extent) {
@@ -121,6 +125,7 @@ TEST_CASE("rmsnorm: eps is inside the sqrt (all-zero input stays finite)") {
 TEST_CASE("matvec: golden vector") {
   util::mdarray<util::data_type::F32, 1> out{ golden::MATVEC_ROWS };
   operations::matvec(
+    execution_context,
     out.mdspan(),
     golden::MATVEC_W,
     golden::MATVEC_X);
@@ -131,6 +136,7 @@ TEST_CASE("matvec: overwrites the output array") {
   util::mdarray<util::data_type::F32, 1> out{golden::MATVEC_ROWS};
   for (int i = 0; i < golden::MATVEC_ROWS; ++i) out.mdspan()[i] = 100.0f;
   operations::matvec(
+    execution_context,
     out.mdspan(),
     golden::MATVEC_W,
     golden::MATVEC_X);
@@ -145,6 +151,7 @@ TEST_CASE("matvec: identity matrix returns x") {
   std::array<float, n> out{};
   const std::mdspan<const float, std::dextents<std::size_t, 2>> I_data{I.data(), n, n};
   operations::matvec(
+    execution_context,
     as_mat(out.data(), n),
     I_data,
     as_mat(x.data(), n));
@@ -159,6 +166,7 @@ TEST_CASE("matvec: non-square catches row/col swaps") {
   float out[2];
   const std::mdspan<const float, std::dextents<std::size_t, 2>> W_data{W, 2, 3};
   operations::matvec(
+    execution_context,
     as_mat(out, 2),
     W_data,
     as_mat(x, 3));
@@ -297,7 +305,8 @@ TEST_CASE("attention: one head over a small KV cache matches numpy") {
   std::array<float, golden::ATTN_T> scores{};
   // K is [T × d]; scores = K·q is exactly a matvec.
   std::mdspan<const float, std::dextents<std::size_t, 2>> K{golden::ATTN_K.data(), T, d};
-  operations::matvec(as_mat(scores.data(), golden::ATTN_T), K, as_mat(golden::ATTN_Q.data(), golden::ATTN_HEAD_DIM));
+  operations::matvec(
+    execution_context,as_mat(scores.data(), golden::ATTN_T), K, as_mat(golden::ATTN_Q.data(), golden::ATTN_HEAD_DIM));
   const float inv_sqrt_d = 1.0f / std::sqrt(float(d));
   for (int t = 0; t < T; ++t) scores[t] *= inv_sqrt_d;
   operations::softmax(as_mat(scores.data(), golden::ATTN_T));

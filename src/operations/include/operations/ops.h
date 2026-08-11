@@ -13,6 +13,7 @@
 #include <immintrin.h>
 #include <xmmintrin.h>
 
+#include <util/concurrency.h>
 #include <util/mdarray.h>
 #include <util/timers.h>
 #include <util/types.h>
@@ -143,29 +144,28 @@ namespace culpeo::inference::operations {
             }
         };
 
-        template<_dot_impl_tag dot_impl>
-        void matvec(util::mat_t<float, 1> out, util::float_matrix auto W, util::float_vector auto x)
+        template<_dot_impl_tag dot_impl, util::execution_policy ExecutionPolicy>
+        void matvec(util::execution_context<ExecutionPolicy> & context, util::mat_t<float, 1> out, util::float_matrix auto W, util::float_vector auto x)
         {
             static util::function_timer timer{ std::source_location::current() };
             auto _ = timer.probe();
             assert(out.extent(0) == W.extent(0));
             assert(x.extent(0) == W.extent(1));
             assert(W.stride(0) == W.extent(1));
-            for (std::size_t r = 0; r < W.extent(0); r++)
+            context.row_for(W, std::hardware_destructive_interference_size / sizeof(float), [&](std::size_t i, auto row)
             {
-                auto w_row = util::get_row(W, r);
-
-                out[r] = details::dot_impl<dot_impl>{}(w_row, x);
-            }
+                out[i] = details::dot_impl<dot_impl>{}(row, x);
+            });
         }
     }
 
-    void matvec(util::mat_t<float, 1> out, util::float_matrix auto W, util::float_vector auto x)
+    template<util::execution_policy ExecutionPolicy>
+    void matvec(util::execution_context<ExecutionPolicy>& context, util::mat_t<float, 1> out, util::float_matrix auto W, util::float_vector auto x)
     {
     #ifdef  USE_SIMD
-        details::matvec<details::_dot_impl_tag::AVX2>(out, W, x);
+        details::matvec<details::_dot_impl_tag::AVX2>(context, out, W, x);
     #else
-        details::matvec<details::_dot_impl_tag::scalar>(out, W, x);
+        details::matvec<details::_dot_impl_tag::scalar>(context, out, W, x);
     #endif
     }
 
