@@ -1,4 +1,5 @@
 set(PUBLIC_HEADERS
+    include/util/concurrency.h
     include/util/mdarray.h
     include/util/scope_guard.h
     include/util/timers.h
