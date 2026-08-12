@@ -1,6 +1,8 @@
 #include <cmath>
 #include <cstddef>
 #include <filesystem>
+#include <format>
+#include <functional>
 #include <iostream>
 #include <mdspan>
 #include <string>
@@ -11,6 +13,7 @@
 #include <model/config.h>
 #include <model/model.h>
 #include <operations/ops.h>
+#include <util/concurrency.h>
 #include <util/mdarray.h>
 #include <util/timers.h>
 #include <util/types.h>
@@ -55,28 +58,38 @@ struct buffers
 
 struct context
 {
+    util::execution_context<util::execution_policy::parallel> execution_context;
     const model::model model;
     cache::kv_cache<util::data_type::F32> cache;
     buffers buffers;
 };
 
+
+void log(std::string_view message)
+{
+    static const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    const auto now = std::chrono::steady_clock::now();
+
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+    std::cerr << "[" << elapsed << "] " << message << std::endl;
+}
+
 std::ptrdiff_t forward(context & context, const auto token)
 {
-    auto & [ model, cache, buffers] = context;
+    auto & [ execution_context, model, cache, buffers] = context;
     auto & config = model.config;
     auto & [ X, H,  Q, K, V, scores, attn, attn_proj, gate, up, ffn_out, logits ] = buffers;
     auto pos = cache.cursor();
-
     operations::embed(X.mdspan(), model.embed_tokens, token);
     for (std::size_t l{ 0 }; l < model.config.num_hidden_layers; l++)
     {
         const auto & layer = model.layers[l];
         operations::rmsnorm(H.mdspan(), X.mdspan(), layer.input_layernorm, config.rms_norm_eps);
-        operations::matvec(Q.mdspan(), layer.q_proj, H.mdspan());
+        operations::matvec(execution_context, Q.mdspan(), layer.q_proj, H.mdspan());
         auto q = Q.view<2>(config.num_attention_heads, config.head_dim);
-        operations::matvec(K.mdspan(), layer.k_proj, H.mdspan());
+        operations::matvec(execution_context, K.mdspan(), layer.k_proj, H.mdspan());
         auto k = K.view<2>(config.num_key_value_heads, config.head_dim);
-        operations::matvec(V.mdspan(), layer.v_proj, H.mdspan());
+        operations::matvec(execution_context, V.mdspan(), layer.v_proj, H.mdspan());
         auto v = V.view<2>(config.num_key_value_heads, config.head_dim);
         operations::rope(q, pos, config.rope_theta);
         operations::rope(k, pos, config.rope_theta);
@@ -94,7 +107,7 @@ std::ptrdiff_t forward(context & context, const auto token)
             auto values = cache.values(l, kvh);
             auto q_h = util::get_row(q, h);
             auto scores_view = util::sub_view(scores.mdspan(), keys.extent(0));
-            operations::matvec(scores_view, keys, q_h);
+            operations::matvec(execution_context, scores_view, keys, q_h);
             const float inv = 1.0f / std::sqrt(float(config.head_dim));
             // TODO: add operations::scale
             for (std::size_t n{0}; n < scores_view.extent(0); n++)
@@ -115,29 +128,20 @@ std::ptrdiff_t forward(context & context, const auto token)
                 attn_h[d] = acc;
             }
         }
-        operations::matvec(attn_proj.mdspan(), layer.o_proj, attn.mdspan());
+        operations::matvec(execution_context, attn_proj.mdspan(), layer.o_proj, attn.mdspan());
         operations::add(X.mdspan(), X.mdspan(), attn_proj.mdspan());
         operations::rmsnorm(H.mdspan(), X.mdspan(), layer.post_attention_layernorm, config.rms_norm_eps);
-        operations::matvec(gate.mdspan(), layer.gate_proj, H.mdspan());
-        operations::matvec(up.mdspan(), layer.up_proj, H.mdspan());
+        operations::matvec(execution_context, gate.mdspan(), layer.gate_proj, H.mdspan());
+        operations::matvec(execution_context, up.mdspan(), layer.up_proj, H.mdspan());
         operations::silu_mul(gate.mdspan(), gate.mdspan(), up.mdspan());
-        operations::matvec(ffn_out.mdspan(), layer.down_proj, gate.mdspan());
+        operations::matvec(execution_context, ffn_out.mdspan(), layer.down_proj, gate.mdspan());
         operations::add(X.mdspan(), X.mdspan(), ffn_out.mdspan());
     }
     cache.advance_cursor();
     operations::rmsnorm(H.mdspan(), X.mdspan(), model.norm, config.rms_norm_eps);
-    operations::matvec(logits.mdspan(), model.lm_head, H.mdspan());
+    operations::matvec(execution_context, logits.mdspan(), model.lm_head, H.mdspan());
     auto next = operations::argmax(logits.mdspan());
     return next;
-}
-
-void log(std::string_view message)
-{
-    static const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-    const auto now = std::chrono::steady_clock::now();
-
-    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
-    std::cerr << "[" << elapsed << "] " << message << std::endl;
 }
 
 int main(int argc, char ** argv)
@@ -171,6 +175,7 @@ int main(int argc, char ** argv)
 
     context ctx
     {
+        .execution_context = util::execution_context<util::execution_policy::parallel>{10},
         .model = std::move(model).value(),
         .cache = std::move(cache),
         .buffers = buffers{ model->config, max_seq },
