@@ -175,9 +175,7 @@ int main(int argc, char ** argv)
 
     context ctx
     {
-        .execution_context = util::execution_context<util::execution_policy::parallel>{
-            util::thread_service<std::function<void()>>{ 10 }
-        },
+        .execution_context = util::execution_context<util::execution_policy::parallel>{10},
         .model = std::move(model).value(),
         .cache = std::move(cache),
         .buffers = buffers{ model->config, max_seq },

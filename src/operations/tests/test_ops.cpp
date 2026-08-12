@@ -40,7 +40,7 @@ static void check_close(util::mdarray<util::data_type::F32, Rank> & got, const s
   }
 }
 
-util::execution_context<util::execution_policy::secuential> execution_context{};
+util::execution_context<util::execution_policy::sequential> execution_context{};
 
 template<typename T>
 util::mat_t<T, 1> as_mat(T* data, std::size_t extent) {

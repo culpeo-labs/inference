@@ -41,15 +41,6 @@ namespace culpeo::inference::util
             m_cv.notify_all();
         }
 
-        thread_service(thread_service&& other):
-            thread_service{ other.m_threads.size() }
-        {
-            std::lock_guard lk{ other.m_mutex };
-            other.m_stopped = true;;
-            m_tasks = std::move(other.m_tasks);
-            other.m_cv.notify_all();
-        }
-
         void post(TaskType task)
         {
             std::lock_guard lk{ m_mutex };
@@ -95,7 +86,7 @@ namespace culpeo::inference::util
         const auto base = (row_count + worker_count - 1) / worker_count;
         const auto chunk_size = ((base + task_alignment - 1) / task_alignment) * task_alignment;
         const auto chunks = std::ranges::views::iota(std::size_t{0}, mat.extent(0)) | std::ranges::views::chunk(chunk_size);
-        const auto chunk_count = row_count / chunk_size + (row_count % chunk_size > 0 ? 1 :0);
+        const auto chunk_count = std::ranges::distance(chunks);
         std::latch done{ static_cast<std::ptrdiff_t>(chunk_count) };
         for (auto chunk : chunks)
         {
@@ -114,7 +105,7 @@ namespace culpeo::inference::util
 
     enum class execution_policy
     {
-        secuential,
+        sequential,
         parallel,
     };
 
@@ -125,7 +116,7 @@ namespace culpeo::inference::util
     };
 
     template<>
-    struct execution_context<execution_policy::secuential>
+    struct execution_context<execution_policy::sequential>
     {
         template<typename F>
         void row_for(float_matrix auto mat, std::size_t _, F&& fn)
@@ -141,7 +132,7 @@ namespace culpeo::inference::util
     template<>
     struct execution_context<execution_policy::parallel>
     {
-        execution_context(thread_service<std::function<void()>> service): m_service{ std::move(service) }
+        execution_context(std::size_t worker_count): m_service{ worker_count }
         {}
 
         template<typename F>
