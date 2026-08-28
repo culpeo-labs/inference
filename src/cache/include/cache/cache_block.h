@@ -3,8 +3,8 @@
 #include <cassert>
 #include <cstddef>
 #include <cstring>
-#include <memory>
 
+#include <util/mdarray.h>
 #include <util/types.h>
 
 namespace culpeo::inference::cache {
@@ -20,8 +20,7 @@ namespace culpeo::inference::cache {
             m_heads{ heads },
             m_max_sequence_length{ max_sequence_length },
             m_dims{ dims },
-            m_size{ max_sequence_length * heads * dims },
-            m_buffer{ std::make_unique<element_type[]>(m_size) }
+            m_data{ heads, max_sequence_length, dims }
         {}
 
         void write(std::size_t head, std::size_t pos, const vector_type& vec)
@@ -29,26 +28,25 @@ namespace culpeo::inference::cache {
             assert(vec.extent(0) == m_dims);
             assert(head < m_heads);
             assert(pos < m_max_sequence_length);
-            auto offset = head * m_max_sequence_length * m_dims + pos * m_dims;
-            std::memcpy(m_buffer.get() + offset, vec.data_handle(), vec.size() * sizeof(element_type));
+            auto head_values = util::get_row(m_data.mdspan(), head);
+            auto pos_values = util::get_row(head_values, pos);
+            std::memcpy(pos_values.data_handle() , vec.data_handle(), vec.size() * sizeof(element_type));
         }
-
 
         cmatrix_type read(std::size_t head, std::size_t pos) const
         {
             assert(head < m_heads);
             assert(pos < m_max_sequence_length);
-            auto offset = head * m_max_sequence_length * m_dims;
-            return cmatrix_type{ m_buffer.get() + offset, pos + 1, m_dims };
+            auto head_values = util::get_row(m_data.mdspan(), head);
+            return util::sub_view(head_values, pos + 1);
         }
 
 
     private:
-        using element_type = vector_type::element_type;
+        using element_type = util::mdarray<D, 2>::element_type;
         std::size_t m_heads;
         std::size_t m_max_sequence_length;
         std::size_t m_dims;
-        std::size_t m_size;
-        std::unique_ptr<element_type[]> m_buffer;
+        util::mdarray<D, 3> m_data;
     };
 }

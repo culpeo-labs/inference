@@ -14,6 +14,7 @@ namespace culpeo::inference::util
     {
     public:
         using mat_t = typename matrix<D>::template mut<Rank>;
+        using view_t = typename matrix<D>::template view<Rank>;
         using element_type = typename mat_t::element_type;
 
         template<typename... Ts>
@@ -30,6 +31,8 @@ namespace culpeo::inference::util
 
         mat_t mdspan() { return m_span; }
 
+        view_t mdspan() const { return view_t{ m_data.get(), m_extents }; }
+
         template<std::size_t ViewRank, typename... Ts>
         typename matrix<D>::template mut<ViewRank> view(Ts... extents)
         {
@@ -37,7 +40,15 @@ namespace culpeo::inference::util
             const auto view_size = (1 * ... * extents);
             assert(view_size == m_size);
             return (typename matrix<D>::template mut<ViewRank>){ m_data.get(), extents...};
+        }
 
+        template<std::size_t ViewRank, typename... Ts>
+        typename matrix<D>::template view<ViewRank> view(Ts... extents) const
+        {
+            static_assert(sizeof...(Ts) == ViewRank);
+            const auto view_size = (1 * ... * extents);
+            assert(view_size == m_size);
+            return (typename matrix<D>::template view<ViewRank>){ m_data.get(), extents...};
         }
 
         auto& operator[](std::ptrdiff_t i) &
@@ -45,7 +56,7 @@ namespace culpeo::inference::util
             return m_span[i];
         }
 
-        auto operator[](std::ptrdiff_t i) const
+        auto operator[](std::ptrdiff_t i) const &
         {
             return m_span[i];
         }
@@ -60,24 +71,45 @@ namespace culpeo::inference::util
     template<typename ElementType, typename Extents, typename AccessorPolicy>
     auto get_row(std::mdspan<ElementType, Extents, std::layout_right, AccessorPolicy> mat, std::size_t row)
     {
-        static_assert(decltype(mat)::rank() == 2);
+        using mat_t = decltype(mat);
+        static_assert(mat_t::rank() > 1);
         assert(row < mat.extent(0));
-        return std::mdspan<ElementType, std::dextents<std::size_t, 1>, std::layout_right, AccessorPolicy>
+        auto extents = [&]()
         {
-            mat.data_handle() + mat.extent(1) * row,
-            mat.extent(1)
+            std::array<std::size_t, mat_t::rank() - 1> extents{};
+            for (size_t i{ 1}; i < mat_t::rank(); i++)
+            {
+                extents[i - 1] = mat.extent(i);
+            }
+            return extents;
+        }();
+        return std::mdspan<ElementType, std::dextents<std::size_t, decltype(mat)::rank() - 1>, std::layout_right, AccessorPolicy>
+        {
+            mat.data_handle() + mat.stride(0) * row,
+            extents
         };
     }
 
     template<typename ElementType, typename Extents, typename AccessorPolicy>
-    auto sub_view(std::mdspan<ElementType, Extents, std::layout_right, AccessorPolicy> mat, std::size_t len)
+    auto sub_view(std::mdspan<ElementType, Extents, std::layout_right, AccessorPolicy> mat, std::size_t count)
     {
-        static_assert(decltype(mat)::rank() == 1);
-        assert(len < mat.extent(0));
-        return std::mdspan<ElementType, std::dextents<std::size_t, 1>, std::layout_right, AccessorPolicy>
+        using mat_t = decltype(mat);
+        static_assert(decltype(mat)::rank() > 0);
+        assert(count <= mat.extent(0));
+        auto extents = [&]()
+        {
+            std::array<std::size_t, mat_t::rank()> extents{};
+            extents[0] = count;
+            for (size_t i{ 1}; i < mat_t::rank(); i++)
+            {
+                extents[i] = mat.extent(i);
+            }
+            return extents;
+        }();
+        return std::mdspan<ElementType, std::dextents<std::size_t, mat_t::rank()>, std::layout_right, AccessorPolicy>
         {
             mat.data_handle(),
-            len
+            extents
         };
     }
 }
