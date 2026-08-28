@@ -88,15 +88,15 @@ namespace culpeo::inference::util
     }
 
     template<typename ElementType, typename Extents, typename AccessorPolicy>
-    auto sub_view(std::mdspan<ElementType, Extents, std::layout_right, AccessorPolicy> mat, std::size_t max_row)
+    auto sub_view(std::mdspan<ElementType, Extents, std::layout_right, AccessorPolicy> mat, std::size_t count)
     {
         using mat_t = decltype(mat);
         static_assert(decltype(mat)::rank() > 0);
-        assert(max_row < mat.extent(0));
+        assert(count <= mat.extent(0));
         auto extents = [&]()
         {
             std::array<std::size_t, mat_t::rank()> extents{};
-            extents[0] = max_row +1;
+            extents[0] = count;
             for (size_t i{ 1}; i < mat_t::rank(); i++)
             {
                 extents[i] = mat.extent(i);

@@ -42,7 +42,7 @@ namespace culpeo::inference::cache {
             assert(pos < m_max_sequence_length);
             auto view = m_data.template view<3>(m_heads, m_max_sequence_length, m_dims);
             auto head_values = util::get_row(view, head);
-            return util::sub_view(head_values, pos);
+            return util::sub_view(head_values, pos + 1);
         }
 
 
