@@ -14,6 +14,7 @@ namespace culpeo::inference::util
     {
     public:
         using mat_t = typename matrix<D>::template mut<Rank>;
+        using view_t = typename matrix<D>::template view<Rank>;
         using element_type = typename mat_t::element_type;
 
         template<typename... Ts>
@@ -29,6 +30,8 @@ namespace culpeo::inference::util
         std::size_t size() const { return m_size; }
 
         mat_t mdspan() { return m_span; }
+
+        view_t mdspan() const { return view_t{ m_data.get(), m_extents }; }
 
         template<std::size_t ViewRank, typename... Ts>
         typename matrix<D>::template mut<ViewRank> view(Ts... extents)
