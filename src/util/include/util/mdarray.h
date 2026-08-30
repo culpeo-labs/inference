@@ -51,14 +51,16 @@ namespace culpeo::inference::util
             return (typename matrix<D>::template view<ViewRank>){ m_data.get(), extents...};
         }
 
-        auto& operator[](std::ptrdiff_t i) &
+        template<typename... Idx>
+        auto operator[](Idx... i) const &
         {
-            return m_span[i];
+            return m_span[i...];
         }
 
-        auto operator[](std::ptrdiff_t i) const &
+        template<typename... Idx>
+        auto & operator[](Idx... i) &
         {
-            return m_span[i];
+            return m_span[i...];
         }
 
     private:

@@ -150,3 +150,125 @@ TEMPLATE_TEST_CASE_SIG("cache_block: reading pos 0 yields exactly one row",
     auto view = block.read(0, 0);
     CHECK(view.extent(0) == 1);
 }
+
+TEMPLATE_TEST_CASE_SIG("cache_block transposed: read shape is [dims, max_seq]",
+                       "[cache]", ((data_type D), D),
+                       data_type::F32, data_type::BF16)
+{
+    // Transposed storage swaps the read axes: the non-transposed block reads
+    // [pos+1, dims]; the transposed one reads [dims, pos+1] so matvec walks
+    // contiguous dim-rows of length pos+1.
+    constexpr std::size_t heads = 2, max_seq = 8, dims = 4;
+    cache::cache_block<D, true> block{ max_seq, heads, dims };
+
+    for (std::size_t p = 0; p < 3; ++p)
+    {
+        std::vector<typename codec<D>::storage> backing(dims);
+        for (std::size_t d = 0; d < dims; ++d)
+            backing[d] = codec<D>::encode(known(0, p, d));
+        block.write(0, p, make_vec<D>(backing));
+    }
+
+    auto view = block.read(0);
+    REQUIRE(view.extent(0) == dims);         // rows = max_seq
+    REQUIRE(view.extent(1) == max_seq);            // cols = pos+1 = 3 (the fencepost)
+}
+
+TEMPLATE_TEST_CASE_SIG("cache_block transposed: values read back with swapped axes",
+                       "[cache]", ((data_type D), D),
+                       data_type::F32, data_type::BF16)
+{
+    constexpr std::size_t heads = 2, max_seq = 8, dims = 4;
+    cache::cache_block<D, true> block{ max_seq, heads, dims };
+
+    for (std::size_t p = 0; p < 3; ++p)
+    {
+        std::vector<typename codec<D>::storage> backing(dims);
+        for (std::size_t d = 0; d < dims; ++d)
+            backing[d] = codec<D>::encode(known(0, p, d));
+        block.write(0, p, make_vec<D>(backing));
+    }
+
+    auto view = block.read(0);
+    // view[d, p] in the transposed block equals the value written for (pos p, dim d).
+    for (std::size_t p = 0; p < 3; ++p)
+        for (std::size_t d = 0; d < dims; ++d)
+            CHECK(view[d, p] == codec<D>::decode(known(0, p, d)));
+}
+
+TEMPLATE_TEST_CASE_SIG("cache_block transposed: reading pos 0 yields one column",
+                       "[cache]", ((data_type D), D),
+                       data_type::F32, data_type::BF16)
+{
+    // Fencepost: the first token's single position must appear as exactly one
+    // column (pos+1 == 1) across all dim-rows.
+    constexpr std::size_t heads = 1, max_seq = 4, dims = 2;
+    cache::cache_block<D, true> block{ max_seq, heads, dims };
+
+    std::vector<typename codec<D>::storage> backing(dims);
+    for (std::size_t d = 0; d < dims; ++d)
+        backing[d] = codec<D>::encode(known(0, 0, d));
+    block.write(0, 0, make_vec<D>(backing));
+
+    auto view = block.read(0);
+    REQUIRE(view.extent(0) == dims);
+    REQUIRE(view.extent(1) == max_seq);      // one position column
+    for (std::size_t d = 0; d < dims; ++d)
+        CHECK(view[d, 0] == codec<D>::decode(known(0, 0, d)));
+}
+
+TEMPLATE_TEST_CASE_SIG("cache_block transposed: heads are isolated",
+                       "[cache]", ((data_type D), D),
+                       data_type::F32, data_type::BF16)
+{
+    constexpr std::size_t heads = 3, max_seq = 8, dims = 4;
+    cache::cache_block<D, true> block{ max_seq, heads, dims };
+
+    for (std::size_t h = 0; h < heads; ++h)
+    {
+        std::vector<typename codec<D>::storage> backing(dims);
+        for (std::size_t d = 0; d < dims; ++d)
+            backing[d] = codec<D>::encode(known(h, 0, d));
+        block.write(h, 0, make_vec<D>(backing));
+    }
+
+    for (std::size_t h = 0; h < heads; ++h)
+    {
+        auto view = block.read(h);
+        for (std::size_t d = 0; d < dims; ++d)
+            CHECK(view[d, 0] == codec<D>::decode(known(h, 0, d)));
+    }
+}
+
+TEMPLATE_TEST_CASE_SIG("cache_block: transposed and non-transposed hold the same values",
+                       "[cache]", ((data_type D), D),
+                       data_type::F32, data_type::BF16)
+{
+    // The two layouts are transposes of each other: writing the same data to
+    // both, the non-transposed read[p, d] must equal the transposed read[d, p]
+    // everywhere. This pins that the transposed variant is a pure layout change,
+    // not a value change.
+    constexpr std::size_t heads = 2, max_seq = 8, dims = 4;
+    cache::cache_block<D, false> plain{ max_seq, heads, dims };
+    cache::cache_block<D, true>  trans{ max_seq, heads, dims };
+
+    for (std::size_t h = 0; h < heads; ++h)
+        for (std::size_t p = 0; p < 3; ++p)
+        {
+            std::vector<typename codec<D>::storage> backing(dims);
+            for (std::size_t d = 0; d < dims; ++d)
+                backing[d] = codec<D>::encode(known(h, p, d));
+            plain.write(h, p, make_vec<D>(backing));
+            trans.write(h, p, make_vec<D>(backing));
+        }
+
+    for (std::size_t h = 0; h < heads; ++h)
+    {
+        auto pv = plain.read(h, 2);   // [pos+1, dims]
+        auto tv = trans.read(h);   // [dims, max_seq]
+        REQUIRE(pv.extent(1) == tv.extent(0));   // dims
+        for (std::size_t p = 0; p < 3; ++p)
+            for (std::size_t d = 0; d < dims; ++d)
+                CHECK(pv[p, d] == tv[d, p]);      // transpose relationship
+    }
+}

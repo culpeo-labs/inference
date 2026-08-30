@@ -120,6 +120,7 @@ std::ptrdiff_t forward(context & context, const auto token)
             auto attn_h = util::get_row(attn_2d, h);
             for (std::size_t d{0}; d < config.head_dim; d++)
             {
+                // if we store V transposed, we could just use matvec
                 float acc{ 0 };
                 for (std::size_t t{0}; t < values.extent(0); t++)
                 {
