@@ -138,7 +138,23 @@ namespace culpeo::inference::util
         template<typename F>
         void row_for(float_matrix auto mat, std::size_t task_alignment, F&& fn)
         {
-            parallel_row_for(m_service, mat, task_alignment, fn);
+            /* Just come up with a number to where the benefits of parallel executing do not outweigh its costs */
+            constexpr auto estimate_work = [](size_t rows, size_t cols)
+            { return rows * cols; };
+            constexpr size_t max_work_size = estimate_work(100, 100);
+            const auto rows = mat.extent(0);
+            const auto cols = mat.extent(1);
+
+
+            if (estimate_work(rows, cols) < max_work_size)
+            {
+                execution_context<execution_policy::sequential> seq_ctxt{};
+                seq_ctxt.row_for(mat, task_alignment, fn);
+            }
+            else
+            {
+                parallel_row_for(m_service, mat, task_alignment, fn);
+            }
         }
 
 
