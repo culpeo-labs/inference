@@ -1,10 +1,11 @@
 #pragma once
 
-#include "cache/cache_block.h"
-#include "util/types.h"
 #include <cstddef>
-#include <expected>
 #include <vector>
+
+#include <cache/cache_block.h>
+#include <util/types.h>
+
 namespace culpeo::inference::cache
 {
     template<util::data_type data_type>
@@ -57,12 +58,12 @@ namespace culpeo::inference::cache
         cmatrix_type values(std::size_t layer, std::size_t head) const
         {
             assert(layer < m_v_caches.size());
-            return m_v_caches[layer].read(head, m_cursor);
+            return m_v_caches[layer].read(head);
         }
     private:
         std::size_t m_cursor;
         std::vector<cache_block<data_type>> m_k_caches;
-        std::vector<cache_block<data_type>> m_v_caches;
+        std::vector<cache_block<data_type, true>> m_v_caches;
 
     };
 }

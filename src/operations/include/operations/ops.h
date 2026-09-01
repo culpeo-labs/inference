@@ -6,6 +6,7 @@
 #include <cstring>
 #include <cstddef>
 #include <limits>
+#include <optional>
 #include <pmmintrin.h>
 #include <ranges>
 #include <stdint.h>
@@ -58,10 +59,10 @@ namespace culpeo::inference::operations {
         template<_dot_impl_tag impl = _dot_impl_tag::scalar>
         struct dot_impl
         {
-            static float operator()(util::float_vector auto a, util::float_vector auto b)
+            static float operator()(util::float_vector auto a, util::float_vector auto b, size_t items)
             {
                 float acc{ 0 };
-                for (std::size_t c = 0; c < a.extent(0); c++)
+                for (std::size_t c = 0; c < items; c++)
                 {
                     acc += a[c] * b[c];
                 }
@@ -108,7 +109,7 @@ namespace culpeo::inference::operations {
                 }
             }
 
-            static float operator()(util::float_vector auto a, util::float_vector auto b)
+            static float operator()(util::float_vector auto a, util::float_vector auto b, size_t items)
             {
                 std::array<__m256, 4> accs;
                 util::unroll<4>([&](auto i)
@@ -116,7 +117,7 @@ namespace culpeo::inference::operations {
                     accs[i] = _mm256_setzero_ps();
                 });
 
-                const auto end = a.extent(0) - a.extent(0) % 32;
+                const auto end = items - items % 32;
 
                 for (auto c : std::views::iota(std::size_t{0 }, end) | std::views::stride(32))
                 {
@@ -132,9 +133,9 @@ namespace culpeo::inference::operations {
                 accs[2] = _mm256_add_ps(accs[2], accs[3]);
                 accs[0] = _mm256_add_ps(accs[0], accs[2]);
                 auto total = horizontal(accs[0]);
-                if ((a.extent(0) % 32) > 0)
+                if ((items % 32) > 0)
                 {
-                    for (auto c : std::views::iota(end, a.extent(0)))
+                    for (auto c : std::views::iota(end, items))
                     {
                         total += a[c] * b[c];
                     }
@@ -145,27 +146,27 @@ namespace culpeo::inference::operations {
         };
 
         template<_dot_impl_tag dot_impl, util::execution_policy ExecutionPolicy>
-        void matvec(util::execution_context<ExecutionPolicy> & context, util::mat_t<float, 1> out, util::float_matrix auto W, util::float_vector auto x)
+        void matvec(util::execution_context<ExecutionPolicy> & context, util::mat_t<float, 1> out, util::float_matrix auto W, util::float_vector auto x, std::size_t w_cols)
         {
             static util::function_timer timer{ std::source_location::current() };
             auto _ = timer.probe();
             assert(out.extent(0) == W.extent(0));
-            assert(x.extent(0) == W.extent(1));
-            assert(W.stride(0) == W.extent(1));
+            assert(x.extent(0) == w_cols);
             context.row_for(W, std::hardware_destructive_interference_size / sizeof(float), [&](std::size_t i, auto row)
             {
-                out[i] = details::dot_impl<dot_impl>{}(row, x);
+                out[i] = details::dot_impl<dot_impl>{}(row, x, w_cols);
             });
         }
     }
 
     template<util::execution_policy ExecutionPolicy>
-    void matvec(util::execution_context<ExecutionPolicy>& context, util::mat_t<float, 1> out, util::float_matrix auto W, util::float_vector auto x)
+    void matvec(util::execution_context<ExecutionPolicy>& context, util::mat_t<float, 1> out, util::float_matrix auto W, util::float_vector auto x, std::optional<std::size_t> max_w_col = std::nullopt)
     {
+        auto w_cols = max_w_col.value_or(W.extent(1));
     #ifdef  USE_SIMD
-        details::matvec<details::_dot_impl_tag::AVX2>(context, out, W, x);
+        details::matvec<details::_dot_impl_tag::AVX2>(context, out, W, x, w_cols);
     #else
-        details::matvec<details::_dot_impl_tag::scalar>(context, out, W, x);
+        details::matvec<details::_dot_impl_tag::scalar>(context, out, W, x, w_cols);
     #endif
     }
 

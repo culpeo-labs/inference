@@ -118,16 +118,7 @@ std::ptrdiff_t forward(context & context, const auto token)
             auto attn_2d = attn.view<2>(config.num_attention_heads, config.head_dim);
 
             auto attn_h = util::get_row(attn_2d, h);
-            for (std::size_t d{0}; d < config.head_dim; d++)
-            {
-                // if we store V transposed, we could just use matvec
-                float acc{ 0 };
-                for (std::size_t t{0}; t < values.extent(0); t++)
-                {
-                    acc += scores_view[t] * values[t, d];
-                }
-                attn_h[d] = acc;
-            }
+            operations::matvec(execution_context, attn_h, values, scores_view, cache.cursor() + 1);
         }
         operations::matvec(execution_context, attn_proj.mdspan(), layer.o_proj, attn.mdspan());
         operations::add(X.mdspan(), X.mdspan(), attn_proj.mdspan());
